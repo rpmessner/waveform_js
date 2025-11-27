@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Waveform.js - Effects Demo</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #0a0e27;
+      color: #00ff41;
+    }
+
+    h1 {
+      border-bottom: 2px solid #00ff41;
+      padding-bottom: 10px;
+    }
+
+    h2 {
+      color: #00ccff;
+    }
+
+    h3 {
+      color: #ff9900;
+      margin-top: 20px;
+    }
+
+    .section {
+      margin: 30px 0;
+      padding: 20px;
+      border: 1px solid #00ff41;
+      background: #0f1729;
+    }
+
+    button {
+      background: #00ff41;
+      color: #0a0e27;
+      border: none;
+      padding: 12px 24px;
+      margin: 5px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #00cc33;
+    }
+
+    button:disabled {
+      background: #666;
+      color: #999;
+      cursor: not-allowed;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .info {
+      background: #1a1f3a;
+      padding: 15px;
+      border-left: 3px solid #00ff41;
+      margin: 15px 0;
+      font-size: 14px;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 5px 0;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    .value {
+      color: #00ccff;
+      font-weight: bold;
+    }
+
+    .effect-group {
+      background: #1a1f3a;
+      padding: 15px;
+      margin: 15px 0;
+      border-left: 3px solid #ff9900;
+    }
+
+    .code-preview {
+      background: #0a0e15;
+      padding: 15px;
+      margin: 15px 0;
+      font-size: 13px;
+      overflow-x: auto;
+      border: 1px solid #333;
+    }
+
+    .code-preview code {
+      color: #00ff41;
+    }
+
+    .param-row {
+      display: grid;
+      grid-template-columns: 120px 1fr 60px;
+      align-items: center;
+      gap: 10px;
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌊 Waveform.js - Effects Demo</h1>
+
+  <div class="section">
+    <h2>1. Initialize & Generate Samples</h2>
+    <button id="init">Initialize Waveform</button>
+    <button id="generate" disabled>Generate Samples</button>
+    <div id="status" class="info" style="display: none;"></div>
+  </div>
+
+  <div id="main-content" style="display: none;">
+    <div class="section">
+      <h2>2. Dry Sound (No Effects)</h2>
+      <p>Click to hear the original sounds without effects:</p>
+      <div class="grid">
+        <button onclick="playDry('kick')">Kick</button>
+        <button onclick="playDry('snare')">Snare</button>
+        <button onclick="playDry('hihat')">Hi-Hat</button>
+        <button onclick="playSynth('sine')">Sine</button>
+        <button onclick="playSynth('saw')">Saw</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>3. Reverb</h2>
+      <p>Add space and ambience to sounds.</p>
+
+      <div class="effect-group">
+        <div class="param-row">
+          <label>room:</label>
+          <input type="range" id="room" min="0" max="1" step="0.05" value="0.5">
+          <span class="value" id="room-value">0.5</span>
+        </div>
+        <div class="param-row">
+          <label>size:</label>
+          <input type="range" id="size" min="0" max="1" step="0.05" value="0.5">
+          <span class="value" id="size-value">0.5</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <button onclick="playWithReverb('kick')">Kick + Reverb</button>
+        <button onclick="playWithReverb('snare')">Snare + Reverb</button>
+        <button onclick="playSynthWithReverb('sine')">Sine + Reverb</button>
+      </div>
+
+      <div class="code-preview">
+        <code>wf.play({ s: 'snare', room: 0.5, size: 0.7 })</code>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>4. Delay</h2>
+      <p>Echo effect with feedback control.</p>
+
+      <div class="effect-group">
+        <div class="param-row">
+          <label>delay:</label>
+          <input type="range" id="delay" min="0" max="1" step="0.05" value="0.4">
+          <span class="value" id="delay-value">0.4</span>
+        </div>
+        <div class="param-row">
+          <label>delaytime:</label>
+          <input type="range" id="delaytime" min="0.05" max="1" step="0.05" value="0.25">
+          <span class="value" id="delaytime-value">0.25</span>
+        </div>
+        <div class="param-row">
+          <label>delayfeedback:</label>
+          <input type="range" id="delayfeedback" min="0" max="0.9" step="0.05" value="0.5">
+          <span class="value" id="delayfeedback-value">0.5</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <button onclick="playWithDelay('kick')">Kick + Delay</button>
+        <button onclick="playWithDelay('snare')">Snare + Delay</button>
+        <button onclick="playSynthWithDelay('sine')">Sine + Delay</button>
+      </div>
+
+      <div class="code-preview">
+        <code>wf.play({ s: 'kick', delay: 0.4, delaytime: 0.25, delayfeedback: 0.5 })</code>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>5. Filter</h2>
+      <p>Shape the frequency content of sounds.</p>
+
+      <div class="effect-group">
+        <h3>Lowpass (cutoff)</h3>
+        <div class="param-row">
+          <label>cutoff:</label>
+          <input type="range" id="cutoff" min="100" max="8000" step="100" value="2000">
+          <span class="value" id="cutoff-value">2000</span>
+        </div>
+        <div class="param-row">
+          <label>resonance:</label>
+          <input type="range" id="resonance" min="0" max="1" step="0.05" value="0.3">
+          <span class="value" id="resonance-value">0.3</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <button onclick="playWithFilter('saw')">Saw + Lowpass</button>
+        <button onclick="playWithFilter('square')">Square + Lowpass</button>
+      </div>
+
+      <div class="effect-group">
+        <h3>Highpass (hcutoff)</h3>
+        <div class="param-row">
+          <label>hcutoff:</label>
+          <input type="range" id="hcutoff" min="20" max="2000" step="20" value="500">
+          <span class="value" id="hcutoff-value">500</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <button onclick="playWithHighpass('kick')">Kick + Highpass</button>
+        <button onclick="playWithHighpass('snare')">Snare + Highpass</button>
+      </div>
+
+      <div class="code-preview">
+        <code>wf.play({ s: 'saw', note: 48, cutoff: 2000, resonance: 0.5 })</code>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>6. Distortion</h2>
+      <p>Add grit and harmonics to sounds.</p>
+
+      <div class="effect-group">
+        <div class="param-row">
+          <label>shape:</label>
+          <input type="range" id="shape" min="0" max="1" step="0.05" value="0.5">
+          <span class="value" id="shape-value">0.5</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <button onclick="playWithDistortion('sine')">Sine + Distortion</button>
+        <button onclick="playWithDistortion('saw')">Saw + Distortion</button>
+        <button onclick="playWithDistortionSample('kick')">Kick + Distortion</button>
+      </div>
+
+      <div class="effect-group">
+        <h3>Bitcrusher (crush)</h3>
+        <div class="param-row">
+          <label>crush:</label>
+          <input type="range" id="crush" min="1" max="16" step="1" value="8">
+          <span class="value" id="crush-value">8</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <button onclick="playWithCrush('kick')">Kick + Crush</button>
+        <button onclick="playWithCrush('snare')">Snare + Crush</button>
+        <button onclick="playSynthWithCrush('sine')">Sine + Crush</button>
+      </div>
+
+      <div class="code-preview">
+        <code>wf.play({ s: 'sine', note: 60, shape: 0.5 })</code>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>7. Combined Effects</h2>
+      <p>Stack multiple effects together!</p>
+
+      <div class="grid">
+        <button onclick="playCombined1()">Filter + Reverb</button>
+        <button onclick="playCombined2()">Distortion + Delay</button>
+        <button onclick="playCombined3()">Full Chain</button>
+        <button onclick="playDub()">Dub Siren</button>
+      </div>
+
+      <div class="code-preview">
+        <code>wf.play({ s: 'snare', cutoff: 3000, shape: 0.2, room: 0.4, delay: 0.3 })</code>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>8. Pattern with Effects</h2>
+      <p>Effects work with the scheduler too!</p>
+
+      <div class="grid">
+        <button onclick="startEffectsPattern()">▶ Start Pattern</button>
+        <button onclick="stopPattern()">⏹ Stop Pattern</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { Waveform } from '../dist/waveform.esm.js';
+
+    const wf = new Waveform();
+
+    // Initialize
+    document.getElementById('init').addEventListener('click', async () => {
+      try {
+        await wf.init();
+        document.getElementById('status').textContent = '✓ Waveform initialized!';
+        document.getElementById('status').style.display = 'block';
+        document.getElementById('init').disabled = true;
+        document.getElementById('generate').disabled = false;
+      } catch (error) {
+        document.getElementById('status').textContent = '✗ Error: ' + error.message;
+        document.getElementById('status').style.display = 'block';
+      }
+    });
+
+    // Generate samples
+    document.getElementById('generate').addEventListener('click', async () => {
+      const btn = document.getElementById('generate');
+      btn.disabled = true;
+      btn.textContent = 'Generating...';
+
+      try {
+        const ctx = wf.getContext();
+        const sampleRate = ctx.sampleRate;
+        const samples = wf.getSamples();
+
+        // Generate kick
+        const kickBuffer = ctx.createBuffer(1, sampleRate * 0.5, sampleRate);
+        const kickData = kickBuffer.getChannelData(0);
+        for (let i = 0; i < kickData.length; i++) {
+          const t = i / sampleRate;
+          const freq = 150 * Math.exp(-t * 10);
+          const env = Math.exp(-t * 8);
+          kickData[i] = Math.sin(2 * Math.PI * freq * t) * env;
+        }
+        samples.samples['kick'] = kickBuffer;
+
+        // Generate snare
+        const snareBuffer = ctx.createBuffer(1, sampleRate * 0.3, sampleRate);
+        const snareData = snareBuffer.getChannelData(0);
+        for (let i = 0; i < snareData.length; i++) {
+          const t = i / sampleRate;
+          const env = Math.exp(-t * 15);
+          const noise = (Math.random() * 2 - 1) * 0.5;
+          const tone = Math.sin(2 * Math.PI * 200 * t) * 0.3;
+          snareData[i] = (noise + tone) * env;
+        }
+        samples.samples['snare'] = snareBuffer;
+
+        // Generate hi-hat
+        const hihatBuffer = ctx.createBuffer(1, sampleRate * 0.1, sampleRate);
+        const hihatData = hihatBuffer.getChannelData(0);
+        for (let i = 0; i < hihatData.length; i++) {
+          const t = i / sampleRate;
+          const env = Math.exp(-t * 25);
+          hihatData[i] = (Math.random() * 2 - 1) * env * 0.3;
+        }
+        samples.samples['hihat'] = hihatBuffer;
+
+        document.getElementById('status').textContent = '✓ Samples generated!';
+        document.getElementById('main-content').style.display = 'block';
+        btn.textContent = '✓ Samples Ready';
+
+      } catch (error) {
+        document.getElementById('status').textContent = '✗ Error: ' + error.message;
+        btn.disabled = false;
+        btn.textContent = 'Generate Samples';
+      }
+    });
+
+    // Slider value updates
+    const sliders = ['room', 'size', 'delay', 'delaytime', 'delayfeedback',
+                     'cutoff', 'resonance', 'hcutoff', 'shape', 'crush'];
+    sliders.forEach(id => {
+      const slider = document.getElementById(id);
+      const display = document.getElementById(id + '-value');
+      slider.addEventListener('input', () => {
+        display.textContent = slider.value;
+      });
+    });
+
+    // Dry sounds
+    window.playDry = (sample) => {
+      wf.play({ s: sample });
+    };
+
+    window.playSynth = (type) => {
+      wf.play({ s: type, note: 60, release: 0.3 });
+    };
+
+    // Reverb
+    window.playWithReverb = (sample) => {
+      const room = parseFloat(document.getElementById('room').value);
+      const size = parseFloat(document.getElementById('size').value);
+      wf.play({ s: sample, room, size });
+    };
+
+    window.playSynthWithReverb = (type) => {
+      const room = parseFloat(document.getElementById('room').value);
+      const size = parseFloat(document.getElementById('size').value);
+      wf.play({ s: type, note: 60, release: 0.5, room, size });
+    };
+
+    // Delay
+    window.playWithDelay = (sample) => {
+      const delay = parseFloat(document.getElementById('delay').value);
+      const delaytime = parseFloat(document.getElementById('delaytime').value);
+      const delayfeedback = parseFloat(document.getElementById('delayfeedback').value);
+      wf.play({ s: sample, delay, delaytime, delayfeedback });
+    };
+
+    window.playSynthWithDelay = (type) => {
+      const delay = parseFloat(document.getElementById('delay').value);
+      const delaytime = parseFloat(document.getElementById('delaytime').value);
+      const delayfeedback = parseFloat(document.getElementById('delayfeedback').value);
+      wf.play({ s: type, note: 60, release: 0.2, delay, delaytime, delayfeedback });
+    };
+
+    // Filter
+    window.playWithFilter = (type) => {
+      const cutoff = parseFloat(document.getElementById('cutoff').value);
+      const resonance = parseFloat(document.getElementById('resonance').value);
+      wf.play({ s: type, note: 48, release: 0.5, cutoff, resonance });
+    };
+
+    window.playWithHighpass = (sample) => {
+      const hcutoff = parseFloat(document.getElementById('hcutoff').value);
+      wf.play({ s: sample, hcutoff });
+    };
+
+    // Distortion
+    window.playWithDistortion = (type) => {
+      const shape = parseFloat(document.getElementById('shape').value);
+      wf.play({ s: type, note: 48, release: 0.5, shape });
+    };
+
+    window.playWithDistortionSample = (sample) => {
+      const shape = parseFloat(document.getElementById('shape').value);
+      wf.play({ s: sample, shape });
+    };
+
+    window.playWithCrush = (sample) => {
+      const crush = parseInt(document.getElementById('crush').value);
+      wf.play({ s: sample, crush });
+    };
+
+    window.playSynthWithCrush = (type) => {
+      const crush = parseInt(document.getElementById('crush').value);
+      wf.play({ s: type, note: 60, release: 0.3, crush });
+    };
+
+    // Combined effects
+    window.playCombined1 = () => {
+      wf.play({ s: 'saw', note: 48, release: 0.5, cutoff: 2000, resonance: 0.5, room: 0.4 });
+    };
+
+    window.playCombined2 = () => {
+      wf.play({ s: 'snare', shape: 0.3, delay: 0.4, delaytime: 0.2, delayfeedback: 0.5 });
+    };
+
+    window.playCombined3 = () => {
+      wf.play({
+        s: 'saw',
+        note: 48,
+        release: 0.5,
+        cutoff: 3000,
+        resonance: 0.3,
+        shape: 0.2,
+        room: 0.3,
+        delay: 0.2,
+        delaytime: 0.125,
+        delayfeedback: 0.4
+      });
+    };
+
+    window.playDub = () => {
+      // Dub siren effect
+      const notes = [60, 67, 72, 67];
+      notes.forEach((note, i) => {
+        const ctx = wf.getContext();
+        wf.play({
+          s: 'sine',
+          note,
+          release: 0.3,
+          room: 0.6,
+          delay: 0.5,
+          delaytime: 0.3,
+          delayfeedback: 0.6
+        }, ctx.currentTime + i * 0.15);
+      });
+    };
+
+    // Pattern with effects
+    window.startEffectsPattern = () => {
+      wf.schedulePattern('effects-demo', [
+        { start: 0.0, params: { s: 'kick', room: 0.2 } },
+        { start: 0.125, params: { s: 'hihat', gain: 0.4, hcutoff: 2000 } },
+        { start: 0.25, params: { s: 'kick', room: 0.2 } },
+        { start: 0.375, params: { s: 'hihat', gain: 0.4, hcutoff: 2000 } },
+        { start: 0.5, params: { s: 'snare', room: 0.4, delay: 0.3, delaytime: 0.125, delayfeedback: 0.4 } },
+        { start: 0.625, params: { s: 'hihat', gain: 0.4, hcutoff: 2000 } },
+        { start: 0.75, params: { s: 'kick', room: 0.2 } },
+        { start: 0.875, params: { s: 'hihat', gain: 0.4, hcutoff: 2000 } }
+      ]);
+      wf.setBpm(120);
+      wf.startScheduler();
+    };
+
+    window.stopPattern = () => {
+      wf.hush();
+      wf.stopScheduler();
+    };
+  </script>
+</body>
+</html>
