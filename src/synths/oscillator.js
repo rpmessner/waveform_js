@@ -1,6 +1,7 @@
 import { noteToFreq } from '../utils/note-to-freq.js';
 import { clamp } from '../utils/db-to-gain.js';
 import { applyADSR } from './envelope.js';
+import { applyEffects, hasEffects } from '../effects/index.js';
 
 /**
  * Create and play an oscillator synth
@@ -83,7 +84,13 @@ export function playOscillator(audioContext, destination, params, startTime = nu
     currentNode = panNode;
   }
 
-  currentNode.connect(destination);
+  // Apply effects chain if any effect parameters are present
+  let effectsChain = null;
+  if (hasEffects(params)) {
+    effectsChain = applyEffects(audioContext, currentNode, destination, params);
+  } else {
+    currentNode.connect(destination);
+  }
 
   // Apply ADSR envelope
   const envelopeParams = {
@@ -105,6 +112,7 @@ export function playOscillator(audioContext, destination, params, startTime = nu
   osc.onended = () => {
     if (filterNode) filterNode.disconnect();
     if (panNode) panNode.disconnect();
+    if (effectsChain) effectsChain.disconnect();
     gainNode.disconnect();
     osc.disconnect();
   };
@@ -114,6 +122,7 @@ export function playOscillator(audioContext, destination, params, startTime = nu
     gainNode,
     filterNode,
     panNode,
+    effectsChain,
     stopTime: now + totalDuration
   };
 }
