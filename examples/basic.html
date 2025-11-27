@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>waveform-js - Basic Example</title>
+  <style>
+    body {
+      font-family: 'Monaco', 'Courier New', monospace;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #00ff00;
+    }
+
+    h1 {
+      color: #00ff00;
+      border-bottom: 2px solid #00ff00;
+      padding-bottom: 10px;
+    }
+
+    .status {
+      background: #2a2a2a;
+      padding: 10px;
+      margin: 20px 0;
+      border-left: 3px solid #00ff00;
+    }
+
+    button {
+      background: #2a2a2a;
+      color: #00ff00;
+      border: 2px solid #00ff00;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #00ff00;
+      color: #1a1a1a;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .section {
+      margin: 30px 0;
+      padding: 20px;
+      background: #2a2a2a;
+      border: 1px solid #333;
+    }
+
+    .section h2 {
+      margin-top: 0;
+      color: #00ff00;
+      font-size: 18px;
+    }
+
+    code {
+      background: #1a1a1a;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>waveform-js - Basic Example</h1>
+
+  <div class="status">
+    <strong>Status:</strong> <span id="status">Not initialized</span>
+  </div>
+
+  <div class="section">
+    <h2>1. Initialize Audio Context</h2>
+    <p>Click to initialize the audio context (required by browser autoplay policy):</p>
+    <button id="initBtn">Initialize Waveform</button>
+  </div>
+
+  <div class="section">
+    <h2>2. Play Basic Synth Sounds</h2>
+    <p>Try different oscillator types:</p>
+    <div class="controls">
+      <button class="play-btn" disabled data-params='{"s": "sine", "note": 60}'>Sine (C4)</button>
+      <button class="play-btn" disabled data-params='{"s": "square", "note": 64}'>Square (E4)</button>
+      <button class="play-btn" disabled data-params='{"s": "saw", "note": 67}'>Sawtooth (G4)</button>
+      <button class="play-btn" disabled data-params='{"s": "triangle", "note": 72}'>Triangle (C5)</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>3. Play with Parameters</h2>
+    <p>SuperDirt-compatible parameters:</p>
+    <div class="controls">
+      <button class="play-btn" disabled data-params='{"s": "sine", "note": 60, "gain": 0.5}'>Quiet</button>
+      <button class="play-btn" disabled data-params='{"s": "sine", "note": 60, "gain": 1.5}'>Loud</button>
+      <button class="play-btn" disabled data-params='{"s": "sine", "note": 60, "pan": -1}'>Left</button>
+      <button class="play-btn" disabled data-params='{"s": "sine", "note": 60, "pan": 1}'>Right</button>
+      <button class="play-btn" disabled data-params='{"s": "saw", "note": 48, "cutoff": 500}'>Filtered Low</button>
+      <button class="play-btn" disabled data-params='{"s": "saw", "note": 48, "cutoff": 2000, "resonance": 0.8}'>Resonant</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>4. Envelope Shapes</h2>
+    <p>ADSR envelope variations:</p>
+    <div class="controls">
+      <button class="play-btn" disabled data-params='{"s": "sine", "note": 60, "attack": 0.001, "decay": 0.1, "sustain": 0.1, "release": 0.1, "duration": 0.2}'>Pluck</button>
+      <button class="play-btn" disabled data-params='{"s": "sine", "note": 60, "attack": 0.5, "decay": 0.2, "sustain": 0.7, "release": 0.5, "duration": 1.0}'>Pad</button>
+      <button class="play-btn" disabled data-params='{"s": "square", "note": 48, "attack": 0.01, "decay": 0.05, "sustain": 0.3, "release": 0.2, "duration": 0.3}'>Bass</button>
+      <button class="play-btn" disabled data-params='{"s": "saw", "note": 72, "attack": 0.001, "decay": 0.05, "sustain": 0.0, "release": 0.05, "duration": 0.1}'>Stab</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>5. Play a Melody</h2>
+    <p>Sequence of notes:</p>
+    <button id="melodyBtn" disabled>Play Melody</button>
+  </div>
+
+  <script type="module">
+    import { Waveform } from '../dist/waveform.esm.js';
+
+    let wf = null;
+    const statusEl = document.getElementById('status');
+    const initBtn = document.getElementById('initBtn');
+    const playBtns = document.querySelectorAll('.play-btn');
+    const melodyBtn = document.getElementById('melodyBtn');
+
+    // Initialize button
+    initBtn.addEventListener('click', async () => {
+      try {
+        wf = new Waveform();
+        await wf.init();
+
+        statusEl.textContent = 'Initialized and ready';
+        statusEl.style.color = '#00ff00';
+
+        initBtn.disabled = true;
+        playBtns.forEach(btn => btn.disabled = false);
+        melodyBtn.disabled = false;
+
+      } catch (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.style.color = '#ff0000';
+      }
+    });
+
+    // Play buttons
+    playBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const params = JSON.parse(btn.dataset.params);
+        try {
+          wf.play(params);
+        } catch (error) {
+          console.error('Error playing sound:', error);
+        }
+      });
+    });
+
+    // Melody button
+    melodyBtn.addEventListener('click', () => {
+      const melody = [
+        { note: 60, time: 0.0 },    // C
+        { note: 64, time: 0.25 },   // E
+        { note: 67, time: 0.5 },    // G
+        { note: 72, time: 0.75 },   // C
+        { note: 67, time: 1.0 },    // G
+        { note: 64, time: 1.25 },   // E
+        { note: 60, time: 1.5 }     // C
+      ];
+
+      const ctx = wf.getContext();
+      const startTime = ctx.currentTime + 0.1;
+
+      melody.forEach(({ note, time }) => {
+        wf.play({
+          s: 'sine',
+          note,
+          attack: 0.01,
+          decay: 0.1,
+          sustain: 0.3,
+          release: 0.2,
+          duration: 0.2,
+          gain: 0.8
+        }, startTime + time);
+      });
+    });
+  </script>
+</body>
+</html>
