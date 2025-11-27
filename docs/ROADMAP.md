@@ -1,21 +1,21 @@
 # waveform_js - Development Roadmap
 
-**Status**: Proposal Stage
+**Status**: Core Complete (Phases 1-4)
 **Purpose**: Web Audio transport layer for browser-based live coding
-**Elixir Equivalent**: [waveform](../../waveform)
-**Last Updated**: 2025-11-26
+**Last Updated**: 2025-11-27
 
 ---
 
 ## Project Vision
 
-**Goal**: Provide a JavaScript equivalent to waveform - a low-level audio transport layer that handles Web Audio synthesis, sample playback, scheduling, and WebMIDI output.
+**Goal**: A low-level audio transport layer that handles Web Audio synthesis, sample playback, scheduling, and WebMIDI output.
 
 **Non-Goals**:
-- UI components (→ harmony_repl_js)
-- Pattern parsing (→ HarmonyServer)
-- Music theory (→ HarmonyServer/harmony)
-- Server communication (→ harmony_repl_js)
+
+- UI components
+- Pattern parsing
+- Music theory
+- Server communication
 
 ---
 
@@ -86,6 +86,7 @@ export { Effects } from './effects/index.js';
 **Goal**: Basic audio playback working
 
 ### 1.1 AudioContext Management
+
 - [ ] `Waveform` class with init/suspend/resume/close
 - [ ] Handle browser autoplay policy (require user gesture)
 - [ ] Master gain node
@@ -93,6 +94,7 @@ export { Effects } from './effects/index.js';
 - [ ] State management (suspended, running, closed)
 
 ### 1.2 Basic Oscillator Synth
+
 - [ ] Sine, saw, square, triangle oscillators
 - [ ] Note parameter (MIDI note → frequency)
 - [ ] Amp/gain parameter
@@ -100,6 +102,7 @@ export { Effects } from './effects/index.js';
 - [ ] Auto-cleanup (stop and disconnect after release)
 
 ### 1.3 Simple Play API
+
 - [ ] `Waveform.play({ s: 'sine', note: 60 })`
 - [ ] Parameter mapping (SuperDirt-compatible names)
 - [ ] Duration/sustain handling
@@ -113,29 +116,26 @@ export { Effects } from './effects/index.js';
 **Goal**: Load and play samples like SuperDirt
 
 ### 2.1 Sample Loading
+
 - [ ] `Samples.load(name, url)` - load single sample
 - [ ] AudioBuffer decoding
 - [ ] Error handling (404, decode failure)
 - [ ] Loading progress events
 
 ### 2.2 Sample Bank Loading
+
 - [ ] `Samples.loadBank(baseUrl)` - load directory structure
 - [ ] JSON manifest format for sample banks
 - [ ] Lazy loading option (load on first play)
-- [ ] CDN hosting support
 
 ### 2.3 Sample Playback
+
 - [ ] `s` parameter - sample name
 - [ ] `n` parameter - sample variant (bd:0, bd:1, etc.)
 - [ ] `speed` parameter - playback rate
 - [ ] `begin`/`end` parameters - sample slice
 - [ ] `gain` parameter - volume
 - [ ] `pan` parameter - stereo position
-
-### 2.4 Default Sample Bank
-- [ ] Host essential samples (bd, sn, hh, cp, etc.)
-- [ ] CDN distribution
-- [ ] ~5MB compressed for basic kit
 
 **Deliverable**: Can load and play samples with SuperDirt parameters
 
@@ -146,18 +146,21 @@ export { Effects } from './effects/index.js';
 **Goal**: High-precision continuous pattern playback
 
 ### 3.1 Lookahead Scheduler
+
 - [ ] `Scheduler` class with event queue
 - [ ] Lookahead buffer (100-200ms)
 - [ ] Web Audio clock-based scheduling
 - [ ] Cycle-based timing (0.0-1.0 positions)
 
 ### 3.2 CPS/Tempo Control
+
 - [ ] `setCps(cps)` - cycles per second
 - [ ] BPM helper: `setBpm(bpm)` → `setCps(bpm/60/4)`
 - [ ] Tempo changes without drift
 - [ ] Current cycle tracking
 
 ### 3.3 Pattern Management
+
 - [ ] `schedulePattern(id, events)` - start pattern
 - [ ] `updatePattern(id, events)` - hot-swap
 - [ ] `stopPattern(id)` - stop specific pattern
@@ -165,11 +168,13 @@ export { Effects } from './effects/index.js';
 - [ ] Multiple concurrent patterns
 
 ### 3.4 Dynamic Patterns
+
 - [ ] Support query functions: `schedulePattern(id, (cycle) => events)`
 - [ ] Cycle number passed to query function
 - [ ] Per-cycle event generation
 
 ### 3.5 Scheduler Events
+
 - [ ] `onCycle(callback)` - fired each cycle
 - [ ] `onEvent(callback)` - fired for each event
 - [ ] `onStart/onStop` callbacks
@@ -183,30 +188,35 @@ export { Effects } from './effects/index.js';
 **Goal**: SuperDirt-compatible effects
 
 ### 4.1 Reverb
+
 - [ ] ConvolverNode-based reverb
 - [ ] `room` parameter (0.0-1.0)
 - [ ] `size` parameter (impulse response length)
 - [ ] Pre-built impulse responses (small, medium, large)
 
 ### 4.2 Delay
+
 - [ ] DelayNode with feedback
 - [ ] `delay` parameter (wet/dry)
 - [ ] `delaytime` parameter (seconds)
 - [ ] `delayfeedback` parameter
 
 ### 4.3 Filter
+
 - [ ] BiquadFilterNode
 - [ ] `cutoff` parameter (Hz)
 - [ ] `resonance` parameter (Q)
 - [ ] Filter types (lowpass, highpass, bandpass)
 
 ### 4.4 Other Effects
+
 - [ ] Distortion (WaveShaperNode)
 - [ ] Bitcrusher (`crush` parameter)
 - [ ] Tremolo
 - [ ] Phaser (future)
 
 ### 4.5 Effects Chain
+
 - [ ] Per-event effects routing
 - [ ] Master effects bus
 - [ ] Dry/wet mixing
@@ -220,24 +230,28 @@ export { Effects } from './effects/index.js';
 **Goal**: Send patterns to external MIDI devices
 
 ### 5.1 MIDI Access
+
 - [ ] Request MIDI access
 - [ ] List available outputs
 - [ ] Select output by name
 - [ ] Handle permission denied
 
 ### 5.2 Note Messages
+
 - [ ] `MIDI.noteOn(note, velocity, channel)`
 - [ ] `MIDI.noteOff(note, channel)`
 - [ ] `MIDI.play({ note, velocity, channel, duration })`
 - [ ] Auto note-off after duration
 
 ### 5.3 Control Messages
+
 - [ ] `MIDI.controlChange(cc, value, channel)`
 - [ ] `MIDI.programChange(program, channel)`
 - [ ] `MIDI.pitchBend(value, channel)`
 - [ ] `MIDI.allNotesOff()` - panic
 
 ### 5.4 Scheduler Integration
+
 - [ ] MIDI output target for patterns
 - [ ] `Scheduler.schedulePattern(id, events, { output: 'midi' })`
 - [ ] Mixed output (Web Audio + MIDI)
@@ -249,23 +263,27 @@ export { Effects } from './effects/index.js';
 ## Phase 6: Advanced Features
 
 ### 6.1 Custom Synth Definitions
+
 - [ ] `Synth.define(name, config)` API
 - [ ] Oscillator + filter + envelope configuration
 - [ ] FM synthesis support
 - [ ] Wavetable synthesis (future)
 
 ### 6.2 Audio Recording
+
 - [ ] MediaRecorder integration
 - [ ] Export to WAV/MP3
 - [ ] Pattern-length recording
 
 ### 6.3 Audio Analysis
+
 - [ ] AnalyserNode integration
 - [ ] FFT data for visualizations
 - [ ] Waveform data for scope
 - [ ] Export analysis data
 
 ### 6.4 MIDI Clock
+
 - [ ] Send MIDI clock (master)
 - [ ] Receive MIDI clock (slave)
 - [ ] Transport messages (start/stop/continue)
@@ -275,18 +293,21 @@ export { Effects } from './effects/index.js';
 ## Phase 7: Polish & Distribution
 
 ### 7.1 Bundle Optimization
+
 - [ ] Tree-shaking support
 - [ ] Minimal bundle size (<50KB gzipped for core)
 - [ ] Optional effect modules
 - [ ] Optional MIDI module
 
 ### 7.2 Documentation
+
 - [ ] API reference
 - [ ] Examples for each feature
-- [ ] Integration guide (with harmony_repl_js)
+- [ ] Integration guide
 - [ ] Migration guide from Tone.js
 
 ### 7.3 Distribution
+
 - [ ] npm package
 - [ ] CDN hosting (unpkg, jsdelivr)
 - [ ] TypeScript definitions
@@ -297,21 +318,25 @@ export { Effects } from './effects/index.js';
 ## Technical Decisions
 
 ### Build Tooling
+
 - **Bundler**: Rollup (clean ES module output)
 - **Format**: UMD + ESM dual output
 - **Minification**: Terser
 - **TypeScript**: JSDoc types initially, .d.ts files
 
 ### Browser Support
+
 - Modern browsers with Web Audio API
 - Chrome 66+, Firefox 76+, Safari 14.1+, Edge 79+
 - WebMIDI: Chrome/Edge only (Firefox/Safari don't support)
 
 ### Dependencies
+
 - **Zero runtime dependencies** for core
 - Optional: None planned
 
 ### Testing
+
 - Jest for unit tests
 - Manual testing for audio (hard to automate)
 - Example pages for integration testing
@@ -321,22 +346,16 @@ export { Effects } from './effects/index.js';
 ## API Design Principles
 
 ### 1. SuperDirt Compatibility
+
 Use the same parameter names where possible:
+
 ```javascript
 // Same as SuperDirt
 wf.play({ s: 'bd', gain: 0.8, pan: -0.5, room: 0.3 });
 ```
 
-### 2. Waveform (Elixir) Parity
-Mirror the Elixir waveform API:
-```javascript
-// JavaScript                          // Elixir
-Scheduler.setCps(0.5);              // PatternScheduler.set_cps(0.5)
-Scheduler.schedulePattern(id, e);   // PatternScheduler.schedule_pattern(id, e)
-Scheduler.hush();                   // PatternScheduler.hush()
-```
+### 2. Simple Defaults, Full Control
 
-### 3. Simple Defaults, Full Control
 ```javascript
 // Simple
 wf.play({ s: 'bd' });
@@ -350,13 +369,13 @@ wf.play({
   speed: 1.2,
   cutoff: 2000,
   room: 0.3,
-  delay: 0.2
+  delay: 0.2,
 });
 ```
 
-### 4. Event-Based Communication
+### 3. Event-Based Communication
+
 ```javascript
-// For integration with harmony_repl_js
 Scheduler.onEvent((event) => {
   // Highlight in editor, update visualization, etc.
 });
@@ -364,64 +383,39 @@ Scheduler.onEvent((event) => {
 
 ---
 
-## Integration Points
-
-### With harmony_repl_js
-```javascript
-// harmony_repl_js receives events from server
-transport.onEvents((events) => {
-  // Pass to waveform_js for playback
-  events.forEach(e => Waveform.play(e.params));
-
-  // Or schedule a full pattern
-  Scheduler.schedulePattern('main', events);
-});
-```
-
-### With HarmonyServer (via Phoenix Channel)
-```javascript
-// Server sends event stream
-channel.on('events', ({ events }) => {
-  Scheduler.updatePattern('main', events);
-});
-
-// Client sends tempo changes
-channel.push('bpm', { bpm: 140 });
-```
-
----
-
 ## Success Metrics
 
 ### Core Functionality
+
 - [ ] Play samples with <20ms latency
 - [ ] Pattern scheduling accurate to <5ms
 - [ ] Hot-swap patterns without audible glitch
 - [ ] MIDI output works in Chrome/Edge
 
 ### Performance
+
 - [ ] Bundle size <50KB gzipped (core)
 - [ ] <100MB memory for 100 loaded samples
 - [ ] 60fps-compatible (no main thread blocking)
 
 ### Compatibility
+
 - [ ] All SuperDirt parameters work
-- [ ] Events from HarmonyServer play correctly
-- [ ] Works in Kino, LiveView, standalone HTML
+- [ ] Works in standalone HTML
 
 ---
 
 ## Timeline Estimate
 
-| Phase | Scope | Estimate |
-|-------|-------|----------|
-| Phase 1 | Audio context + basic synth | 1 week |
-| Phase 2 | Sample playback | 1 week |
-| Phase 3 | Pattern scheduler | 1-2 weeks |
-| Phase 4 | Effects | 1 week |
-| Phase 5 | WebMIDI | 1 week |
-| Phase 6 | Advanced features | 2 weeks |
-| Phase 7 | Polish & distribution | 1 week |
+| Phase   | Scope                       | Estimate  |
+| ------- | --------------------------- | --------- |
+| Phase 1 | Audio context + basic synth | 1 week    |
+| Phase 2 | Sample playback             | 1 week    |
+| Phase 3 | Pattern scheduler           | 1-2 weeks |
+| Phase 4 | Effects                     | 1 week    |
+| Phase 5 | WebMIDI                     | 1 week    |
+| Phase 6 | Advanced features           | 2 weeks   |
+| Phase 7 | Polish & distribution       | 1 week    |
 
 **Total**: ~8-10 weeks for full feature set
 
@@ -431,10 +425,9 @@ channel.push('bpm', { bpm: 140 });
 
 ## Open Questions
 
-1. **Sample hosting**: Host our own CDN, or rely on users to provide samples?
-2. **Tone.js compatibility**: Worth providing a Tone.js adapter?
-3. **AudioWorklet**: Use AudioWorklet for scheduler, or keep it simple with setTimeout?
-4. **Offline rendering**: Support OfflineAudioContext for non-realtime rendering?
+1. **Tone.js compatibility**: Worth providing a Tone.js adapter?
+2. **AudioWorklet**: Use AudioWorklet for scheduler, or keep it simple with setTimeout?
+3. **Offline rendering**: Support OfflineAudioContext for non-realtime rendering?
 
 ---
 
@@ -442,6 +435,5 @@ channel.push('bpm', { bpm: 140 });
 
 - [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 - [WebMIDI API](https://developer.mozilla.org/en-US/docs/Web/API/Web_MIDI_API)
-- [waveform (Elixir)](../waveform) - Direct equivalent
 - [Tone.js](https://tonejs.github.io/) - Inspiration for API design
 - [Strudel webaudio.mjs](https://github.com/tidalcycles/strudel/blob/main/packages/webaudio/webaudio.mjs) - Reference implementation
