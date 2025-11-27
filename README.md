@@ -1,68 +1,25 @@
 # waveform_js
 
-**Web Audio transport layer for browser-based live coding** - the JavaScript equivalent of [waveform](../waveform).
+**Web Audio transport layer for browser-based live coding.**
 
-waveform_js provides low-level Web Audio synthesis, sample playback, scheduling, and WebMIDI output. It's designed to be a foundation for browser-based music applications, live coding environments, and generative audio tools.
+waveform_js provides low-level Web Audio synthesis, sample playback, scheduling, and effects processing. It's designed to be a foundation for browser-based music applications, live coding environments, and generative audio tools.
 
 ## Status
 
-📋 **Proposal Stage** - See [docs/ROADMAP.md](docs/ROADMAP.md) for development plan.
+**Core library complete** (Phases 1-4). Ready for live coding use.
 
-## Features (Planned)
+- 143 tests passing
+- 19KB minified bundle
 
-- **Web Audio Synthesis**: Oscillators (sine, saw, square, triangle), envelopes (ADSR), filters
-- **Sample Playback**: Load and play samples with SuperDirt-compatible parameters
-- **Pattern Scheduling**: High-precision lookahead scheduler for cycle-based timing
-- **Hot-Swappable Patterns**: Change patterns while playing without stopping
-- **WebMIDI Output**: Send notes, CC, program changes to external devices/DAWs
-- **Effects**: Reverb (ConvolverNode), delay, filter, distortion
-- **SuperDirt Compatibility**: Same parameter names (`s`, `n`, `gain`, `pan`, `speed`, `room`, etc.)
+## Features
 
-## Ecosystem Role
+- **Web Audio Synthesis**: Oscillators (sine, saw, square, triangle), ADSR envelopes, filters
+- **Sample Playback**: Load and play samples with speed, begin, end, pitched playback
+- **Pattern Scheduling**: High-precision lookahead scheduler with hot-swap support
+- **Effects**: Reverb, delay, filter, distortion, bitcrusher
+- **SuperDirt Compatibility**: Same parameter names (`s`, `n`, `gain`, `pan`, `room`, `delay`, etc.)
 
-waveform_js is the **browser audio layer** of the Elixir music ecosystem:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Client Applications                       │
-│  kino_harmony (Livebook) │ harmony.nvim (Neovim) │ Web REPL     │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │
-         ┌─────────────────┴─────────────────┐
-         │                                   │
-         ▼                                   ▼
-┌─────────────────────┐           ┌─────────────────────┐
-│  harmony_repl_js    │           │   HarmonyServer     │
-│  (REPL UI)          │           │   (coordination)    │
-│  • CodeMirror       │◀─────────▶│   • UzuParser       │
-│  • Phoenix Channel  │  events   │   • UzuPattern      │
-│  • Visualizations   │           │   • harmony         │
-└─────────┬───────────┘           └──────────┬──────────┘
-          │                                   │
-          ▼                                   ▼
-┌─────────────────────┐           ┌─────────────────────┐
-│   waveform_js       │ ◀── HERE  │    waveform         │
-│   (Web Audio)       │           │   (SuperCollider)   │
-│   • Scheduling      │           │   • OSC             │
-│   • Synths/Samples  │           │   • SuperDirt       │
-│   • WebMIDI         │           │   • MIDI            │
-└─────────────────────┘           └─────────────────────┘
-```
-
-**waveform_js handles:**
-- Web Audio context lifecycle
-- Synthesis (oscillators, samples, envelopes)
-- Effects processing
-- Pattern scheduling with cycle-based timing
-- WebMIDI output
-
-**waveform_js does NOT handle:**
-- UI/editor (→ harmony_repl_js)
-- Server communication (→ harmony_repl_js)
-- Pattern parsing (→ HarmonyServer/UzuParser)
-- Music theory (→ HarmonyServer/harmony)
-
-## Installation (Future)
+## Installation
 
 ```bash
 npm install waveform-js
@@ -74,7 +31,7 @@ Or via CDN:
 <script src="https://unpkg.com/waveform-js/dist/waveform.min.js"></script>
 ```
 
-## Usage (Planned API)
+## Usage
 
 ### Basic Playback
 
@@ -94,183 +51,115 @@ wf.play({ s: 'hh', n: 2, pan: -0.5, room: 0.3 });
 ### Synth Playback
 
 ```javascript
-import { Synth } from 'waveform-js';
+// Play oscillator synths
+wf.play({ s: 'saw', note: 60, cutoff: 2000, resonance: 0.3 });
+wf.play({ s: 'sine', note: 48, attack: 0.1, release: 0.5 });
+wf.play({ s: 'square', note: 60, gain: 0.5 });
 
-// Trigger a synth with parameters
-Synth.trigger('saw', {
-  note: 60,
-  amp: 0.5,
-  cutoff: 2000,
-  resonance: 0.3,
-  attack: 0.01,
-  decay: 0.1,
-  sustain: 0.5,
-  release: 0.3
-});
-
-// Built-in synth types
-Synth.trigger('sine', { note: 60 });
-Synth.trigger('square', { note: 60 });
-Synth.trigger('triangle', { note: 60 });
-Synth.trigger('noise', { amp: 0.2 });
+// With effects
+wf.play({ s: 'saw', note: 48, room: 0.5, delay: 0.3, delaytime: 0.25 });
+wf.play({ s: 'sine', note: 60, shape: 0.5, crush: 8 });
 ```
 
 ### Pattern Scheduling
 
 ```javascript
-import { Scheduler } from 'waveform-js';
-
 // Set tempo (cycles per second, 0.5 = 120 BPM)
-Scheduler.setCps(0.5);
+wf.setCps(0.5);
+wf.startScheduler();
 
 // Define a pattern (events at cycle positions 0.0-1.0)
-const drums = [
-  { time: 0.0, params: { s: 'bd' } },
-  { time: 0.25, params: { s: 'cp' } },
-  { time: 0.5, params: { s: 'sn' } },
-  { time: 0.75, params: { s: 'cp' } }
-];
-
-// Start continuous playback
-Scheduler.schedulePattern('drums', drums);
+wf.schedulePattern('drums', [
+  { start: 0.0, params: { s: 'bd' } },
+  { start: 0.25, params: { s: 'hh' } },
+  { start: 0.5, params: { s: 'sn' } },
+  { start: 0.75, params: { s: 'hh' } }
+]);
 
 // Hot-swap pattern while playing
-const newDrums = [
-  { time: 0.0, params: { s: 'bd', gain: 1.2 } },
-  { time: 0.5, params: { s: 'bd', n: 1 } }
-];
-Scheduler.updatePattern('drums', newDrums);
+wf.updatePattern('drums', [
+  { start: 0.0, params: { s: 'bd', gain: 1.2 } },
+  { start: 0.5, params: { s: 'bd', n: 1 } }
+]);
 
 // Dynamic patterns (query function)
-Scheduler.schedulePattern('dynamic', (cycle) => {
-  if (cycle % 4 === 0) {
-    return [{ time: 0.0, params: { s: 'crash' } }];
+wf.schedulePattern('fills', (cycle) => {
+  if (cycle % 4 === 3) {
+    return [{ start: 0.75, params: { s: 'crash' } }];
   }
   return [];
 });
 
-// Stop a pattern
-Scheduler.stopPattern('drums');
-
-// Emergency stop all
-Scheduler.hush();
-```
-
-### MIDI Output
-
-```javascript
-import { MIDI } from 'waveform-js';
-
-// List available MIDI outputs
-const outputs = await MIDI.listOutputs();
-
-// Send a note
-MIDI.play({ note: 60, velocity: 80, channel: 1 });
-
-// With duration (auto note-off)
-MIDI.play({ note: 60, velocity: 80, channel: 1, duration: 500 });
-
-// Control change
-MIDI.controlChange(1, 64, 1);  // CC 1 = 64 on channel 1
-
-// Program change
-MIDI.programChange(5, 1);  // Program 5 on channel 1
-
-// All notes off
-MIDI.allNotesOff();
+// Stop patterns
+wf.stopPattern('drums');
+wf.hush();  // Stop all
 ```
 
 ### Sample Loading
 
 ```javascript
-import { Samples } from 'waveform-js';
+// Load a single sample
+await wf.loadSample('kick', '/samples/kick.wav');
 
-// Load from URL
-await Samples.load('kick', '/samples/kick.wav');
+// Load multiple samples
+await wf.loadSamples({
+  bd: '/samples/bd.wav',
+  sn: '/samples/sn.wav',
+  hh: '/samples/hh.wav'
+});
 
-// Load a sample bank (directory structure like Dirt-Samples)
-await Samples.loadBank('/samples/dirt-samples/');
+// Load a sample bank (multiple variants)
+await wf.loadSampleBank('piano', [
+  '/samples/piano/c3.wav',
+  '/samples/piano/c4.wav',
+  '/samples/piano/c5.wav'
+]);
 
-// Load from CDN (future: host common samples)
-await Samples.loadFromCDN('dirt-samples');
-
-// Check loaded samples
-Samples.list();  // ['bd', 'sn', 'hh', 'cp', ...]
+// Play loaded samples
+wf.play({ s: 'kick' });
+wf.play({ s: 'piano', n: 1 });  // Second variant
 ```
 
-## API Reference (Planned)
+## API Reference
 
 ### Waveform
 
-Main class for audio context management.
+Main class for audio context and playback.
 
 | Method | Description |
 |--------|-------------|
-| `new Waveform(options)` | Create instance with options |
+| `new Waveform(options)` | Create instance |
 | `init()` | Initialize AudioContext (requires user gesture) |
-| `play(params)` | Play a sample with SuperDirt-compatible params |
-| `suspend()` | Suspend audio context |
-| `resume()` | Resume audio context |
-| `close()` | Close audio context |
-
-### Scheduler
-
-Pattern scheduling with cycle-based timing.
-
-| Method | Description |
-|--------|-------------|
-| `setCps(cps)` | Set cycles per second (0.5 = 120 BPM) |
-| `getCps()` | Get current CPS |
-| `schedulePattern(id, events)` | Start a pattern looping |
-| `updatePattern(id, events)` | Hot-swap a playing pattern |
-| `stopPattern(id)` | Stop a specific pattern |
-| `hush()` | Stop all patterns |
-| `getCurrentCycle()` | Get current cycle number |
-
-### Synth
-
-Synthesis engine.
-
-| Method | Description |
-|--------|-------------|
-| `trigger(type, params)` | Trigger a synth |
-| `define(name, config)` | Define a custom synth |
-| `list()` | List available synth types |
-
-### MIDI
-
-WebMIDI output.
-
-| Method | Description |
-|--------|-------------|
-| `listOutputs()` | List available MIDI outputs |
-| `selectOutput(name)` | Select output by name |
-| `play(params)` | Send note with optional duration |
-| `noteOn(note, velocity, channel)` | Send note on |
-| `noteOff(note, channel)` | Send note off |
-| `controlChange(cc, value, channel)` | Send CC |
-| `programChange(program, channel)` | Send program change |
-| `allNotesOff()` | Panic - all notes off |
+| `play(params, startTime?)` | Play sample or synth |
+| `suspend()` / `resume()` / `close()` | Context lifecycle |
 
 ### Samples
 
-Sample management.
+| Method | Description |
+|--------|-------------|
+| `loadSample(name, url)` | Load a single sample |
+| `loadSamples(map)` | Load multiple samples |
+| `loadSampleBank(name, urls)` | Load sample variants |
+
+### Scheduler
 
 | Method | Description |
 |--------|-------------|
-| `load(name, url)` | Load a single sample |
-| `loadBank(url)` | Load a directory of samples |
-| `loadFromCDN(bank)` | Load from hosted CDN |
-| `get(name, n)` | Get a sample buffer |
-| `list()` | List loaded sample names |
+| `startScheduler()` / `stopScheduler()` | Start/stop scheduler |
+| `schedulePattern(id, events)` | Schedule a pattern |
+| `updatePattern(id, events)` | Hot-swap pattern |
+| `stopPattern(id)` | Stop a pattern |
+| `hush()` | Stop all patterns |
+| `setCps(cps)` / `setBpm(bpm)` | Set tempo |
+| `getCps()` / `getBpm()` | Get tempo |
 
 ## SuperDirt Parameter Compatibility
 
-waveform_js aims for compatibility with SuperDirt parameters:
+waveform_js uses SuperDirt-compatible parameter names:
 
 | Parameter | Description | Range |
 |-----------|-------------|-------|
-| `s` | Sample name | string |
+| `s` | Sample/synth name | string |
 | `n` | Sample variant | integer |
 | `note` | MIDI note number | 0-127 |
 | `gain` | Volume | 0.0-2.0 |
@@ -284,6 +173,11 @@ waveform_js aims for compatibility with SuperDirt parameters:
 | `size` | Reverb size | 0.0-1.0 |
 | `delay` | Delay amount | 0.0-1.0 |
 | `delaytime` | Delay time | seconds |
+| `delayfeedback` | Delay feedback | 0.0-0.95 |
+| `shape` | Distortion | 0.0-1.0 |
+| `crush` | Bitcrusher depth | 1-16 |
+| `hcutoff` | Highpass cutoff | Hz |
+| `bandf` | Bandpass center | Hz |
 
 ## Development
 
@@ -305,18 +199,10 @@ npm test
 npm run dev
 ```
 
-## Related Projects
-
-- [waveform](../waveform) - Elixir OSC client for SuperCollider (this project's Elixir equivalent)
-- [harmony_repl_js](../harmony_repl_js) - Browser REPL UI (uses waveform_js)
-- [HarmonyServer](../harmony_server) - Elixir API gateway for pattern evaluation
-- [kino_harmony](../kino_harmony) - Livebook live coding widget
-
 ## Inspiration
 
-- [waveform](../waveform) - Direct Elixir equivalent
 - [Tone.js](https://tonejs.github.io/) - Web Audio framework
-- [Strudel](https://strudel.cc/) - Browser-based live coding (uses Web Audio)
+- [Strudel](https://strudel.cc/) - Browser-based live coding
 - [SuperDirt](https://github.com/musikinformatik/SuperDirt) - Parameter conventions
 
 ## License
