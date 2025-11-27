@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Waveform.js - Sample Playback Demo</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #0a0e27;
+      color: #00ff41;
+    }
+
+    h1 {
+      border-bottom: 2px solid #00ff41;
+      padding-bottom: 10px;
+    }
+
+    .section {
+      margin: 30px 0;
+      padding: 20px;
+      border: 1px solid #00ff41;
+      background: #0f1729;
+    }
+
+    button {
+      background: #00ff41;
+      color: #0a0e27;
+      border: none;
+      padding: 12px 24px;
+      margin: 5px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #00cc33;
+    }
+
+    button:disabled {
+      background: #666;
+      color: #999;
+      cursor: not-allowed;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .info {
+      background: #1a1f3a;
+      padding: 15px;
+      border-left: 3px solid #00ff41;
+      margin: 15px 0;
+      font-size: 14px;
+    }
+
+    .progress {
+      margin: 15px 0;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 20px;
+      background: #1a1f3a;
+      border: 1px solid #00ff41;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #00ff41;
+      transition: width 0.3s;
+    }
+
+    .progress-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #0a0e27;
+      font-weight: bold;
+      font-size: 12px;
+      mix-blend-mode: difference;
+    }
+
+    .sequencer {
+      display: grid;
+      grid-template-columns: repeat(16, 1fr);
+      gap: 5px;
+      margin-top: 15px;
+    }
+
+    .sequencer button {
+      padding: 20px 5px;
+      font-size: 12px;
+    }
+
+    .sequencer button.active {
+      background: #ff6600;
+    }
+
+    .sequencer button.playing {
+      background: #ffff00;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 5px 0;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    .value {
+      color: #00ccff;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌊 Waveform.js - Sample Playback</h1>
+
+  <div class="section">
+    <h2>1. Initialize</h2>
+    <p>Click to initialize the audio context (required by browser):</p>
+    <button id="init">Initialize Waveform</button>
+    <div id="status" class="info" style="display: none;"></div>
+  </div>
+
+  <div id="main-content" style="display: none;">
+    <div class="section">
+      <h2>2. Generate Test Samples</h2>
+      <p>Since we don't have external samples yet, we'll generate some procedural audio samples:</p>
+      <button id="generate">Generate Test Samples</button>
+      <div id="generate-progress" class="progress" style="display: none;">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+          <div class="progress-text" id="progress-text">0%</div>
+        </div>
+      </div>
+      <div id="samples-info" class="info" style="display: none;"></div>
+    </div>
+
+    <div id="sample-controls" style="display: none;">
+      <div class="section">
+        <h2>3. Play Samples</h2>
+        <p>Click to play individual samples:</p>
+        <div class="grid">
+          <button onclick="playSample('kick')">Kick</button>
+          <button onclick="playSample('snare')">Snare</button>
+          <button onclick="playSample('hihat')">Hi-Hat</button>
+          <button onclick="playSample('clap')">Clap</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>4. Sample Parameters</h2>
+        <p>Play with different SuperDirt parameters:</p>
+
+        <label>Speed: <span class="value" id="speed-value">1.0</span></label>
+        <input type="range" id="speed" min="0.5" max="2.0" step="0.1" value="1.0">
+
+        <label>Gain: <span class="value" id="gain-value">0.8</span></label>
+        <input type="range" id="gain" min="0.0" max="1.5" step="0.1" value="0.8">
+
+        <label>Pan: <span class="value" id="pan-value">0.0</span></label>
+        <input type="range" id="pan" min="-1.0" max="1.0" step="0.1" value="0.0">
+
+        <label>Begin: <span class="value" id="begin-value">0.0</span></label>
+        <input type="range" id="begin" min="0.0" max="0.8" step="0.1" value="0.0">
+
+        <label>End: <span class="value" id="end-value">1.0</span></label>
+        <input type="range" id="end" min="0.2" max="1.0" step="0.1" value="1.0">
+
+        <div class="grid" style="margin-top: 20px;">
+          <button onclick="playWithParams('kick')">Kick</button>
+          <button onclick="playWithParams('snare')">Snare</button>
+          <button onclick="playWithParams('hihat')">Hi-Hat</button>
+          <button onclick="playWithParams('clap')">Clap</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>5. Simple Sequencer</h2>
+        <p>Click steps to toggle. Press Start to play loop.</p>
+
+        <div style="margin: 15px 0;">
+          <button id="seq-start">Start</button>
+          <button id="seq-stop" disabled>Stop</button>
+          <label style="display: inline; margin-left: 20px;">
+            BPM: <span class="value" id="bpm-value">120</span>
+          </label>
+          <input type="range" id="bpm" min="60" max="180" step="10" value="120" style="width: 200px; display: inline;">
+        </div>
+
+        <h3>Kick:</h3>
+        <div class="sequencer" id="seq-kick"></div>
+
+        <h3>Snare:</h3>
+        <div class="sequencer" id="seq-snare"></div>
+
+        <h3>Hi-Hat:</h3>
+        <div class="sequencer" id="seq-hihat"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { Waveform } from '../dist/waveform.esm.js';
+
+    const wf = new Waveform();
+    let isPlaying = false;
+    let currentStep = 0;
+    let intervalId = null;
+
+    // Initialize
+    document.getElementById('init').addEventListener('click', async () => {
+      try {
+        await wf.init();
+        document.getElementById('status').textContent = '✓ Waveform initialized! State: ' + wf.getState();
+        document.getElementById('status').style.display = 'block';
+        document.getElementById('main-content').style.display = 'block';
+        document.getElementById('init').disabled = true;
+      } catch (error) {
+        document.getElementById('status').textContent = '✗ Error: ' + error.message;
+        document.getElementById('status').style.display = 'block';
+      }
+    });
+
+    // Generate procedural samples
+    document.getElementById('generate').addEventListener('click', async () => {
+      const btn = document.getElementById('generate');
+      btn.disabled = true;
+      document.getElementById('generate-progress').style.display = 'block';
+
+      try {
+        const ctx = wf.getContext();
+        const sampleRate = ctx.sampleRate;
+
+        // Generate kick drum
+        const kickBuffer = ctx.createBuffer(1, sampleRate * 0.5, sampleRate);
+        const kickData = kickBuffer.getChannelData(0);
+        for (let i = 0; i < kickData.length; i++) {
+          const t = i / sampleRate;
+          const freq = 150 * Math.exp(-t * 10);
+          const env = Math.exp(-t * 8);
+          kickData[i] = Math.sin(2 * Math.PI * freq * t) * env;
+        }
+
+        // Generate snare
+        const snareBuffer = ctx.createBuffer(1, sampleRate * 0.3, sampleRate);
+        const snareData = snareBuffer.getChannelData(0);
+        for (let i = 0; i < snareData.length; i++) {
+          const t = i / sampleRate;
+          const env = Math.exp(-t * 15);
+          const noise = (Math.random() * 2 - 1) * 0.5;
+          const tone = Math.sin(2 * Math.PI * 200 * t) * 0.3;
+          snareData[i] = (noise + tone) * env;
+        }
+
+        // Generate hi-hat
+        const hihatBuffer = ctx.createBuffer(1, sampleRate * 0.1, sampleRate);
+        const hihatData = hihatBuffer.getChannelData(0);
+        for (let i = 0; i < hihatData.length; i++) {
+          const t = i / sampleRate;
+          const env = Math.exp(-t * 25);
+          hihatData[i] = (Math.random() * 2 - 1) * env * 0.3;
+        }
+
+        // Generate clap
+        const clapBuffer = ctx.createBuffer(1, sampleRate * 0.2, sampleRate);
+        const clapData = clapBuffer.getChannelData(0);
+        for (let i = 0; i < clapData.length; i++) {
+          const t = i / sampleRate;
+          const env = Math.exp(-t * 12) * (Math.sin(t * 100) * 0.5 + 0.5);
+          clapData[i] = (Math.random() * 2 - 1) * env * 0.5;
+        }
+
+        // Register samples
+        const samples = wf.getSamples();
+        samples.samples['kick'] = kickBuffer;
+        samples.samples['snare'] = snareBuffer;
+        samples.samples['hihat'] = hihatBuffer;
+        samples.samples['clap'] = clapBuffer;
+
+        updateProgress(100);
+
+        document.getElementById('samples-info').textContent =
+          `✓ Generated 4 samples: ${samples.list().join(', ')}`;
+        document.getElementById('samples-info').style.display = 'block';
+        document.getElementById('sample-controls').style.display = 'block';
+
+      } catch (error) {
+        document.getElementById('samples-info').textContent = '✗ Error: ' + error.message;
+        document.getElementById('samples-info').style.display = 'block';
+        btn.disabled = false;
+      }
+    });
+
+    function updateProgress(percent) {
+      document.getElementById('progress-fill').style.width = percent + '%';
+      document.getElementById('progress-text').textContent = Math.round(percent) + '%';
+    }
+
+    // Play sample functions
+    window.playSample = (name) => {
+      wf.play({ s: name });
+    };
+
+    window.playWithParams = (name) => {
+      const speed = parseFloat(document.getElementById('speed').value);
+      const gain = parseFloat(document.getElementById('gain').value);
+      const pan = parseFloat(document.getElementById('pan').value);
+      const begin = parseFloat(document.getElementById('begin').value);
+      const end = parseFloat(document.getElementById('end').value);
+
+      wf.play({ s: name, speed, gain, pan, begin, end });
+    };
+
+    // Parameter display updates
+    ['speed', 'gain', 'pan', 'begin', 'end', 'bpm'].forEach(id => {
+      const slider = document.getElementById(id);
+      const display = document.getElementById(id + '-value');
+      slider.addEventListener('input', () => {
+        display.textContent = slider.value;
+      });
+    });
+
+    // Sequencer setup
+    const tracks = ['kick', 'snare', 'hihat'];
+    const steps = 16;
+    const sequences = {
+      kick: new Array(steps).fill(false),
+      snare: new Array(steps).fill(false),
+      hihat: new Array(steps).fill(false)
+    };
+
+    tracks.forEach(track => {
+      const container = document.getElementById(`seq-${track}`);
+      for (let i = 0; i < steps; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i + 1;
+        btn.onclick = () => {
+          sequences[track][i] = !sequences[track][i];
+          btn.classList.toggle('active');
+        };
+        container.appendChild(btn);
+      }
+    });
+
+    // Sequencer playback
+    document.getElementById('seq-start').addEventListener('click', () => {
+      if (isPlaying) return;
+      isPlaying = true;
+      currentStep = 0;
+
+      const bpm = parseFloat(document.getElementById('bpm').value);
+      const stepTime = (60 / bpm) * 1000 / 4; // 16th notes
+
+      document.getElementById('seq-start').disabled = true;
+      document.getElementById('seq-stop').disabled = false;
+
+      intervalId = setInterval(() => {
+        // Play active steps
+        tracks.forEach(track => {
+          if (sequences[track][currentStep]) {
+            wf.play({ s: track });
+          }
+        });
+
+        // Update UI
+        updateSequencerUI(currentStep);
+
+        currentStep = (currentStep + 1) % steps;
+      }, stepTime);
+    });
+
+    document.getElementById('seq-stop').addEventListener('click', () => {
+      if (!isPlaying) return;
+      isPlaying = false;
+      clearInterval(intervalId);
+      document.getElementById('seq-start').disabled = false;
+      document.getElementById('seq-stop').disabled = true;
+
+      // Clear playing indicators
+      document.querySelectorAll('.sequencer button.playing').forEach(btn => {
+        btn.classList.remove('playing');
+      });
+    });
+
+    function updateSequencerUI(step) {
+      // Remove previous playing indicators
+      document.querySelectorAll('.sequencer button.playing').forEach(btn => {
+        btn.classList.remove('playing');
+      });
+
+      // Add playing indicator to current step
+      tracks.forEach(track => {
+        const container = document.getElementById(`seq-${track}`);
+        const btn = container.children[step];
+        btn.classList.add('playing');
+      });
+    }
+  </script>
+</body>
+</html>
