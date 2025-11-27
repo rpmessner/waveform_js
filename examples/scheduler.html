@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Waveform.js - Pattern Scheduler Demo</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #0a0e27;
+      color: #00ff41;
+    }
+
+    h1 {
+      border-bottom: 2px solid #00ff41;
+      padding-bottom: 10px;
+    }
+
+    h2 {
+      color: #00ccff;
+    }
+
+    .section {
+      margin: 30px 0;
+      padding: 20px;
+      border: 1px solid #00ff41;
+      background: #0f1729;
+    }
+
+    button {
+      background: #00ff41;
+      color: #0a0e27;
+      border: none;
+      padding: 12px 24px;
+      margin: 5px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #00cc33;
+    }
+
+    button:disabled {
+      background: #666;
+      color: #999;
+      cursor: not-allowed;
+    }
+
+    button.active {
+      background: #ff6600;
+    }
+
+    button.danger {
+      background: #ff3333;
+    }
+
+    button.danger:hover {
+      background: #cc0000;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .info {
+      background: #1a1f3a;
+      padding: 15px;
+      border-left: 3px solid #00ff41;
+      margin: 15px 0;
+      font-size: 14px;
+    }
+
+    .status-bar {
+      display: flex;
+      gap: 30px;
+      padding: 15px;
+      background: #1a1f3a;
+      margin: 15px 0;
+      font-size: 14px;
+    }
+
+    .status-item {
+      display: flex;
+      gap: 10px;
+    }
+
+    .status-label {
+      color: #888;
+    }
+
+    .status-value {
+      color: #00ccff;
+      font-weight: bold;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 5px 0;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    .value {
+      color: #00ccff;
+      font-weight: bold;
+    }
+
+    .pattern-list {
+      margin-top: 15px;
+    }
+
+    .pattern-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background: #1a1f3a;
+      margin: 5px 0;
+      border-left: 3px solid #00ccff;
+    }
+
+    .pattern-item button {
+      padding: 5px 15px;
+      font-size: 12px;
+    }
+
+    .cycle-display {
+      font-size: 48px;
+      font-weight: bold;
+      text-align: center;
+      padding: 20px;
+      background: #1a1f3a;
+      margin: 15px 0;
+      color: #00ccff;
+    }
+
+    .event-log {
+      height: 150px;
+      overflow-y: auto;
+      background: #1a1f3a;
+      padding: 10px;
+      font-size: 12px;
+      margin-top: 15px;
+    }
+
+    .event-log .event {
+      margin: 2px 0;
+    }
+
+    .event-log .event-time {
+      color: #888;
+    }
+
+    .event-log .event-name {
+      color: #00ff41;
+    }
+
+    textarea {
+      width: 100%;
+      height: 150px;
+      background: #1a1f3a;
+      color: #00ff41;
+      border: 1px solid #00ff41;
+      padding: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+
+    .code-example {
+      background: #1a1f3a;
+      padding: 15px;
+      margin: 10px 0;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+
+    .code-example code {
+      color: #00ff41;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌊 Waveform.js - Pattern Scheduler</h1>
+
+  <div class="section">
+    <h2>1. Initialize & Generate Samples</h2>
+    <button id="init">Initialize Waveform</button>
+    <button id="generate" disabled>Generate Samples</button>
+    <div id="status" class="info" style="display: none;"></div>
+  </div>
+
+  <div id="main-content" style="display: none;">
+    <div class="section">
+      <h2>2. Scheduler Control</h2>
+
+      <div class="status-bar">
+        <div class="status-item">
+          <span class="status-label">Status:</span>
+          <span class="status-value" id="scheduler-status">Stopped</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">BPM:</span>
+          <span class="status-value" id="current-bpm">120</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">CPS:</span>
+          <span class="status-value" id="current-cps">0.5</span>
+        </div>
+      </div>
+
+      <div class="cycle-display">
+        Cycle: <span id="cycle-number">0</span>
+      </div>
+
+      <label>Tempo: <span class="value" id="bpm-value">120</span> BPM</label>
+      <input type="range" id="bpm" min="60" max="200" step="5" value="120">
+
+      <div class="grid" style="margin-top: 20px;">
+        <button id="start">▶ Start</button>
+        <button id="stop" disabled>⏹ Stop</button>
+        <button id="hush" class="danger">HUSH</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>3. Preset Patterns</h2>
+      <p>Click to add patterns to the scheduler:</p>
+
+      <div class="grid">
+        <button onclick="addPattern('4floor')">Four on Floor</button>
+        <button onclick="addPattern('backbeat')">Backbeat</button>
+        <button onclick="addPattern('hihat8')">8th Hi-Hats</button>
+        <button onclick="addPattern('hihat16')">16th Hi-Hats</button>
+        <button onclick="addPattern('syncopated')">Syncopated</button>
+        <button onclick="addPattern('offbeat')">Offbeat Kick</button>
+      </div>
+
+      <h3>Active Patterns</h3>
+      <div class="pattern-list" id="pattern-list">
+        <em style="color: #888;">No patterns active</em>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>4. Dynamic Patterns</h2>
+      <p>These patterns change each cycle using query functions:</p>
+
+      <div class="grid">
+        <button onclick="addPattern('evolving')">Evolving Pattern</button>
+        <button onclick="addPattern('random')">Random Hits</button>
+        <button onclick="addPattern('euclidean')">Euclidean (5,8)</button>
+        <button onclick="addPattern('melody')">Simple Melody</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>5. Custom Pattern</h2>
+      <p>Edit the pattern and click "Load Custom":</p>
+
+      <textarea id="custom-pattern">[
+  { "start": 0.0, "params": { "s": "kick" } },
+  { "start": 0.25, "params": { "s": "hihat", "gain": 0.5 } },
+  { "start": 0.5, "params": { "s": "snare" } },
+  { "start": 0.75, "params": { "s": "hihat", "gain": 0.5 } }
+]</textarea>
+      <button onclick="loadCustomPattern()">Load Custom Pattern</button>
+    </div>
+
+    <div class="section">
+      <h2>6. Event Log</h2>
+      <div class="event-log" id="event-log"></div>
+      <button onclick="clearLog()">Clear Log</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { Waveform } from '../dist/waveform.esm.js';
+
+    const wf = new Waveform();
+    let animationId = null;
+
+    // Pattern definitions
+    const patterns = {
+      '4floor': [
+        { start: 0.0, params: { s: 'kick' } },
+        { start: 0.25, params: { s: 'kick' } },
+        { start: 0.5, params: { s: 'kick' } },
+        { start: 0.75, params: { s: 'kick' } }
+      ],
+      'backbeat': [
+        { start: 0.0, params: { s: 'kick' } },
+        { start: 0.25, params: { s: 'snare' } },
+        { start: 0.5, params: { s: 'kick' } },
+        { start: 0.75, params: { s: 'snare' } }
+      ],
+      'hihat8': [
+        { start: 0.0, params: { s: 'hihat', gain: 0.6 } },
+        { start: 0.125, params: { s: 'hihat', gain: 0.4 } },
+        { start: 0.25, params: { s: 'hihat', gain: 0.6 } },
+        { start: 0.375, params: { s: 'hihat', gain: 0.4 } },
+        { start: 0.5, params: { s: 'hihat', gain: 0.6 } },
+        { start: 0.625, params: { s: 'hihat', gain: 0.4 } },
+        { start: 0.75, params: { s: 'hihat', gain: 0.6 } },
+        { start: 0.875, params: { s: 'hihat', gain: 0.4 } }
+      ],
+      'hihat16': Array.from({ length: 16 }, (_, i) => ({
+        start: i / 16,
+        params: { s: 'hihat', gain: i % 4 === 0 ? 0.7 : 0.3 }
+      })),
+      'syncopated': [
+        { start: 0.0, params: { s: 'kick' } },
+        { start: 0.1875, params: { s: 'kick', gain: 0.7 } },
+        { start: 0.5, params: { s: 'snare' } },
+        { start: 0.75, params: { s: 'kick', gain: 0.6 } },
+        { start: 0.875, params: { s: 'snare', gain: 0.5 } }
+      ],
+      'offbeat': [
+        { start: 0.125, params: { s: 'kick' } },
+        { start: 0.375, params: { s: 'kick' } },
+        { start: 0.625, params: { s: 'kick' } },
+        { start: 0.875, params: { s: 'kick' } }
+      ],
+
+      // Dynamic patterns (query functions)
+      'evolving': (cycle) => {
+        // Pattern that adds more hits as cycles progress
+        const density = Math.min(8, 2 + Math.floor(cycle / 4));
+        return Array.from({ length: density }, (_, i) => ({
+          start: i / density,
+          params: { s: 'hihat', gain: 0.3 + (i === 0 ? 0.4 : 0) }
+        }));
+      },
+      'random': (cycle) => {
+        // Random hits each cycle
+        const events = [];
+        for (let i = 0; i < 4; i++) {
+          if (Math.random() > 0.4) {
+            events.push({
+              start: i / 4 + Math.random() * 0.125,
+              params: {
+                s: ['kick', 'snare', 'hihat', 'clap'][Math.floor(Math.random() * 4)],
+                gain: 0.5 + Math.random() * 0.5
+              }
+            });
+          }
+        }
+        return events;
+      },
+      'euclidean': (cycle) => {
+        // Euclidean rhythm: 5 hits spread over 8 slots
+        const hits = 5;
+        const slots = 8;
+        const events = [];
+        for (let i = 0; i < slots; i++) {
+          if (Math.floor(i * hits / slots) !== Math.floor((i - 1) * hits / slots)) {
+            events.push({
+              start: i / slots,
+              params: { s: 'kick', gain: 0.8 }
+            });
+          }
+        }
+        return events;
+      },
+      'melody': (cycle) => {
+        // Simple evolving melody using synth
+        const notes = [60, 64, 67, 72, 67, 64, 60, 55];
+        const baseNote = notes[cycle % notes.length];
+        return [
+          { start: 0.0, params: { s: 'sine', note: baseNote, attack: 0.01, release: 0.3 } },
+          { start: 0.5, params: { s: 'sine', note: baseNote + 7, attack: 0.01, release: 0.2, gain: 0.6 } }
+        ];
+      }
+    };
+
+    // Initialize
+    document.getElementById('init').addEventListener('click', async () => {
+      try {
+        await wf.init();
+        document.getElementById('status').textContent = '✓ Waveform initialized!';
+        document.getElementById('status').style.display = 'block';
+        document.getElementById('init').disabled = true;
+        document.getElementById('generate').disabled = false;
+      } catch (error) {
+        document.getElementById('status').textContent = '✗ Error: ' + error.message;
+        document.getElementById('status').style.display = 'block';
+      }
+    });
+
+    // Generate samples
+    document.getElementById('generate').addEventListener('click', async () => {
+      const btn = document.getElementById('generate');
+      btn.disabled = true;
+      btn.textContent = 'Generating...';
+
+      try {
+        const ctx = wf.getContext();
+        const sampleRate = ctx.sampleRate;
+        const samples = wf.getSamples();
+
+        // Generate kick
+        const kickBuffer = ctx.createBuffer(1, sampleRate * 0.5, sampleRate);
+        const kickData = kickBuffer.getChannelData(0);
+        for (let i = 0; i < kickData.length; i++) {
+          const t = i / sampleRate;
+          const freq = 150 * Math.exp(-t * 10);
+          const env = Math.exp(-t * 8);
+          kickData[i] = Math.sin(2 * Math.PI * freq * t) * env;
+        }
+        samples.samples['kick'] = kickBuffer;
+
+        // Generate snare
+        const snareBuffer = ctx.createBuffer(1, sampleRate * 0.3, sampleRate);
+        const snareData = snareBuffer.getChannelData(0);
+        for (let i = 0; i < snareData.length; i++) {
+          const t = i / sampleRate;
+          const env = Math.exp(-t * 15);
+          const noise = (Math.random() * 2 - 1) * 0.5;
+          const tone = Math.sin(2 * Math.PI * 200 * t) * 0.3;
+          snareData[i] = (noise + tone) * env;
+        }
+        samples.samples['snare'] = snareBuffer;
+
+        // Generate hi-hat
+        const hihatBuffer = ctx.createBuffer(1, sampleRate * 0.1, sampleRate);
+        const hihatData = hihatBuffer.getChannelData(0);
+        for (let i = 0; i < hihatData.length; i++) {
+          const t = i / sampleRate;
+          const env = Math.exp(-t * 25);
+          hihatData[i] = (Math.random() * 2 - 1) * env * 0.3;
+        }
+        samples.samples['hihat'] = hihatBuffer;
+
+        // Generate clap
+        const clapBuffer = ctx.createBuffer(1, sampleRate * 0.2, sampleRate);
+        const clapData = clapBuffer.getChannelData(0);
+        for (let i = 0; i < clapData.length; i++) {
+          const t = i / sampleRate;
+          const env = Math.exp(-t * 12) * (Math.sin(t * 100) * 0.5 + 0.5);
+          clapData[i] = (Math.random() * 2 - 1) * env * 0.5;
+        }
+        samples.samples['clap'] = clapBuffer;
+
+        document.getElementById('status').textContent = '✓ Samples generated: kick, snare, hihat, clap';
+        document.getElementById('main-content').style.display = 'block';
+        btn.textContent = '✓ Samples Ready';
+
+        // Register callbacks
+        setupCallbacks();
+
+      } catch (error) {
+        document.getElementById('status').textContent = '✗ Error: ' + error.message;
+        btn.disabled = false;
+        btn.textContent = 'Generate Samples';
+      }
+    });
+
+    // Setup event callbacks
+    function setupCallbacks() {
+      wf.onCycle((cycle) => {
+        document.getElementById('cycle-number').textContent = cycle;
+      });
+
+      wf.onEvent((event, time, cycle) => {
+        const name = event.params?.s || event.s || 'unknown';
+        logEvent(`[Cycle ${cycle}] ${name}`);
+      });
+
+      // Update cycle display continuously
+      function updateDisplay() {
+        if (wf.isSchedulerRunning()) {
+          const cycle = wf.getCurrentCycle();
+          document.getElementById('cycle-number').textContent = cycle.toFixed(2);
+        }
+        animationId = requestAnimationFrame(updateDisplay);
+      }
+      updateDisplay();
+    }
+
+    // Start/Stop scheduler
+    document.getElementById('start').addEventListener('click', () => {
+      wf.startScheduler();
+      document.getElementById('start').disabled = true;
+      document.getElementById('stop').disabled = false;
+      document.getElementById('scheduler-status').textContent = 'Running';
+    });
+
+    document.getElementById('stop').addEventListener('click', () => {
+      wf.stopScheduler();
+      document.getElementById('start').disabled = false;
+      document.getElementById('stop').disabled = true;
+      document.getElementById('scheduler-status').textContent = 'Stopped';
+    });
+
+    document.getElementById('hush').addEventListener('click', () => {
+      wf.hush();
+      updatePatternList();
+      logEvent('--- HUSH ---');
+    });
+
+    // BPM control
+    document.getElementById('bpm').addEventListener('input', (e) => {
+      const bpm = parseFloat(e.target.value);
+      document.getElementById('bpm-value').textContent = bpm;
+      document.getElementById('current-bpm').textContent = bpm;
+      document.getElementById('current-cps').textContent = (bpm / 60 / 4).toFixed(3);
+      wf.setBpm(bpm);
+    });
+
+    // Pattern management
+    window.addPattern = (name) => {
+      const pattern = patterns[name];
+      if (!pattern) return;
+
+      wf.schedulePattern(name, pattern);
+      updatePatternList();
+      logEvent(`+ Added pattern: ${name}`);
+    };
+
+    window.removePattern = (name) => {
+      wf.stopPattern(name);
+      updatePatternList();
+      logEvent(`- Removed pattern: ${name}`);
+    };
+
+    function updatePatternList() {
+      const list = document.getElementById('pattern-list');
+      const scheduler = wf.getScheduler();
+      const ids = scheduler.getPatternIds();
+
+      if (ids.length === 0) {
+        list.innerHTML = '<em style="color: #888;">No patterns active</em>';
+        return;
+      }
+
+      list.innerHTML = ids.map(id => `
+        <div class="pattern-item">
+          <span>${id}</span>
+          <button onclick="removePattern('${id}')">Remove</button>
+        </div>
+      `).join('');
+    }
+
+    // Custom pattern
+    window.loadCustomPattern = () => {
+      try {
+        const text = document.getElementById('custom-pattern').value;
+        const events = JSON.parse(text);
+        wf.schedulePattern('custom', events);
+        updatePatternList();
+        logEvent('+ Loaded custom pattern');
+      } catch (e) {
+        alert('Invalid JSON: ' + e.message);
+      }
+    };
+
+    // Event log
+    function logEvent(message) {
+      const log = document.getElementById('event-log');
+      const time = new Date().toLocaleTimeString();
+      const div = document.createElement('div');
+      div.className = 'event';
+      div.innerHTML = `<span class="event-time">${time}</span> <span class="event-name">${message}</span>`;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    window.clearLog = () => {
+      document.getElementById('event-log').innerHTML = '';
+    };
+  </script>
+</body>
+</html>
