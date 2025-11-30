@@ -5,6 +5,7 @@
 
 let audioContext = null;
 let masterGain = null;
+let analyser = null;
 let state = 'uninitialized'; // 'uninitialized', 'suspended', 'running', 'closed'
 
 /**
@@ -26,6 +27,12 @@ export async function init(options = {}) {
   masterGain = audioContext.createGain();
   masterGain.gain.setValueAtTime(1.0, audioContext.currentTime);
   masterGain.connect(audioContext.destination);
+
+  // Create analyser node for visualizations (taps master output)
+  analyser = audioContext.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.smoothingTimeConstant = 0.8;
+  masterGain.connect(analyser);
 
   // Update state
   state = audioContext.state;
@@ -111,6 +118,7 @@ export async function close() {
   state = 'closed';
   audioContext = null;
   masterGain = null;
+  analyser = null;
 }
 
 /**
@@ -138,4 +146,34 @@ export function getMasterGainValue() {
     throw new Error('AudioContext not initialized');
   }
   return masterGain.gain.value;
+}
+
+/**
+ * Get the analyser node for visualizations
+ * @returns {AnalyserNode|null} The analyser node or null if not initialized
+ */
+export function getAnalyser() {
+  return analyser;
+}
+
+/**
+ * Get frequency data from the analyser
+ * @returns {Uint8Array|null} Frequency data array or null if not initialized
+ */
+export function getFrequencyData() {
+  if (!analyser) return null;
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(data);
+  return data;
+}
+
+/**
+ * Get time domain (waveform) data from the analyser
+ * @returns {Uint8Array|null} Time domain data array or null if not initialized
+ */
+export function getTimeDomainData() {
+  if (!analyser) return null;
+  const data = new Uint8Array(analyser.fftSize);
+  analyser.getByteTimeDomainData(data);
+  return data;
 }

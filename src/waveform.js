@@ -158,6 +158,30 @@ export class Waveform {
   }
 
   /**
+   * Get the analyser node for visualizations
+   * @returns {AnalyserNode|null}
+   */
+  getAnalyser() {
+    return AudioContextManager.getAnalyser();
+  }
+
+  /**
+   * Get frequency data from the analyser (for spectrum visualization)
+   * @returns {Uint8Array|null} Array of frequency bin values (0-255)
+   */
+  getFrequencyData() {
+    return AudioContextManager.getFrequencyData();
+  }
+
+  /**
+   * Get time domain data from the analyser (for oscilloscope visualization)
+   * @returns {Uint8Array|null} Array of waveform values (0-255, 128 = zero crossing)
+   */
+  getTimeDomainData() {
+    return AudioContextManager.getTimeDomainData();
+  }
+
+  /**
    * Load a single sample
    * @param {string} name - Name to register the sample under
    * @param {string} url - URL of the audio file

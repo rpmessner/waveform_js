@@ -15,14 +15,14 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Client Applications                       │
-│  kino_harmony (Livebook) │ harmony.nvim (Neovim) │ Web REPL     │
+│  kino_undertow (Livebook) │ undertow.nvim (Neovim) │ Web REPL   │
 └──────────────────────────┬──────────────────────────────────────┘
                            │
          ┌─────────────────┴─────────────────┐
          │                                   │
          ▼                                   ▼
 ┌─────────────────────┐           ┌─────────────────────┐
-│  harmony_repl_js    │           │   HarmonyServer     │
+│  undertow_repl_js   │           │   UndertowServer    │
 │  (REPL UI)          │◀─────────▶│   (coordination)    │
 └─────────┬───────────┘           └──────────┬──────────┘
           │                                   │
@@ -43,10 +43,10 @@
 
 ### What waveform_js Does NOT Handle
 
-- ❌ UI/editor (→ harmony_repl_js)
-- ❌ Server communication (→ harmony_repl_js)
-- ❌ Pattern parsing (→ HarmonyServer/UzuParser)
-- ❌ Music theory (→ HarmonyServer/harmony)
+- ❌ UI/editor (→ undertow_repl_js)
+- ❌ Server communication (→ undertow_repl_js)
+- ❌ Pattern parsing (→ UndertowServer/UzuParser)
+- ❌ Music theory (→ UndertowServer/harmony)
 
 ## Project Structure
 
@@ -243,9 +243,9 @@ All AI assistant sessions should be documented in `docs/sessions/` with:
 ## Related Projects
 
 - **waveform** - Elixir equivalent (SuperCollider OSC client)
-- **harmony_repl_js** - Browser REPL UI (uses waveform_js)
-- **HarmonyServer** - Elixir pattern evaluation server
-- **kino_harmony** - Livebook live coding widget
+- **undertow_repl_js** - Browser REPL UI (uses waveform_js)
+- **UndertowServer** - Elixir pattern evaluation server
+- **kino_undertow** - Livebook live coding widget
 
 ## Inspiration
 
