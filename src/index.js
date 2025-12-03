@@ -25,5 +25,8 @@ export { noteToFreq, noteNameToFreq } from './utils/note-to-freq.js';
 export { dbToGain, gainToDb, clamp } from './utils/db-to-gain.js';
 export { bpmToCps, cpsToBpm } from './utils/timing.js';
 
+// Export FM synth presets for customization
+export { FM_PRESETS, playFMSynth, isFMSynth } from './synths/fm-synth.js';
+
 // For UMD builds, export default as Waveform
 export { Waveform as default } from './waveform.js';

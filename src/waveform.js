@@ -1,5 +1,6 @@
 import * as AudioContextManager from './audio-context.js';
 import { playOscillator, SYNTH_TYPES } from './synths/oscillator.js';
+import { playFMSynth, isFMSynth } from './synths/fm-synth.js';
 import { playSampleWithNote } from './synths/sampler.js';
 import { Samples } from './samples/index.js';
 import { Scheduler } from './scheduler.js';
@@ -83,8 +84,19 @@ export class Waveform {
         params,
         startTime
       );
+    } else if (isFMSynth(synthType)) {
+      // Play FM synth (piano, fm, pad, bell, organ)
+      return playFMSynth(
+        audioContext,
+        masterGain,
+        {
+          ...params,
+          preset: synthType
+        },
+        startTime
+      );
     } else {
-      // Play oscillator synth
+      // Play basic oscillator synth (sine, saw, square, triangle)
       const oscType = SYNTH_TYPES[synthType] || 'sine';
 
       return playOscillator(
