@@ -1,4 +1,4 @@
-import { noteToFreq, noteNameToFreq } from '../src/utils/note-to-freq.js';
+import { noteToFreq, noteNameToFreq } from '../src/utils/note-to-freq';
 
 describe('noteToFreq', () => {
   test('converts MIDI note 69 (A4) to 440 Hz', () => {

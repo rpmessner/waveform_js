@@ -1,4 +1,4 @@
-import { dbToGain, gainToDb, clamp } from '../src/utils/db-to-gain.js';
+import { dbToGain, gainToDb, clamp } from '../src/utils/db-to-gain';
 
 describe('dbToGain', () => {
   test('converts 0 dB to gain of 1', () => {

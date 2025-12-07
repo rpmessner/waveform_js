@@ -1,4 +1,4 @@
-import { bpmToCps, cpsToBpm } from '../src/utils/timing.js';
+import { bpmToCps, cpsToBpm } from '../src/utils/timing';
 
 describe('bpmToCps', () => {
   test('converts 120 BPM to 0.5 CPS', () => {

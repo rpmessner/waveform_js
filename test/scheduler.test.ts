@@ -4,28 +4,35 @@
  * Actual audio scheduling is tested in browser integration tests
  */
 
-import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { Scheduler } from '../src/scheduler.js';
+import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { createScheduler } from '../src/scheduler';
+import type { SchedulerInstance, SoundParams, PlayFn } from '../src/types';
+
+// Mock AudioContext interface with mutable currentTime for testing
+interface MockAudioContext {
+  currentTime: number;
+  state: string;
+}
 
 // Mock AudioContext for testing
-const createMockAudioContext = (currentTime = 0) => ({
+const createMockAudioContext = (currentTime = 0): MockAudioContext => ({
   currentTime,
   state: 'running'
 });
 
 describe('Scheduler', () => {
-  let scheduler;
-  let mockAudioContext;
-  let playFn;
-  let playedEvents;
+  let scheduler: SchedulerInstance;
+  let mockAudioContext: MockAudioContext;
+  let playFn: PlayFn;
+  let playedEvents: Array<{ params: SoundParams; startTime: number }>;
 
   beforeEach(() => {
     mockAudioContext = createMockAudioContext(0);
     playedEvents = [];
-    playFn = (params, startTime) => {
+    playFn = (params: SoundParams, startTime: number) => {
       playedEvents.push({ params, startTime });
     };
-    scheduler = new Scheduler(mockAudioContext, playFn);
+    scheduler = createScheduler({ audioContext: mockAudioContext as unknown as AudioContext, playFn });
   });
 
   afterEach(() => {
@@ -34,19 +41,20 @@ describe('Scheduler', () => {
     }
   });
 
-  describe('constructor', () => {
+  describe('factory function', () => {
     test('requires AudioContext', () => {
-      expect(() => new Scheduler(null, playFn)).toThrow('AudioContext is required');
+      expect(() => createScheduler({ audioContext: null as unknown as AudioContext, playFn })).toThrow('AudioContext is required');
     });
 
     test('requires play function', () => {
-      expect(() => new Scheduler(mockAudioContext, null)).toThrow('Play function is required');
+      expect(() => createScheduler({ audioContext: mockAudioContext as unknown as AudioContext, playFn: null as unknown as PlayFn })).toThrow('Play function is required');
     });
 
     test('accepts custom config', () => {
-      const customScheduler = new Scheduler(mockAudioContext, playFn, {
-        cps: 1.0,
-        lookahead: 0.2
+      const customScheduler = createScheduler({
+        audioContext: mockAudioContext as unknown as AudioContext,
+        playFn,
+        config: { cps: 1.0, lookahead: 0.2 }
       });
       expect(customScheduler.getCps()).toBe(1.0);
     });
@@ -102,17 +110,17 @@ describe('Scheduler', () => {
     });
 
     test('schedulePattern with function', () => {
-      const queryFn = (cycle) => [{ start: 0, params: { s: 'bd' } }];
+      const queryFn = (cycle: number) => [{ start: 0, params: { s: 'bd' } }];
       scheduler.schedulePattern('dynamic', queryFn);
       expect(scheduler.hasPattern('dynamic')).toBe(true);
     });
 
     test('schedulePattern requires ID', () => {
-      expect(() => scheduler.schedulePattern(null, [])).toThrow('Pattern ID is required');
+      expect(() => scheduler.schedulePattern(null as unknown as string, [])).toThrow('Pattern ID is required');
     });
 
     test('schedulePattern validates input', () => {
-      expect(() => scheduler.schedulePattern('test', 'invalid')).toThrow('must be an array');
+      expect(() => scheduler.schedulePattern('test', 'invalid' as unknown as [])).toThrow('must be an array');
     });
 
     test('updatePattern overwrites existing', () => {
@@ -208,13 +216,13 @@ describe('Scheduler', () => {
     });
 
     test('onCycle can be registered', () => {
-      const callback = (cycle) => {};
+      const callback = (_cycle: number) => {};
       const unsub = scheduler.onCycle(callback);
       expect(typeof unsub).toBe('function');
     });
 
     test('onEvent can be registered', () => {
-      const callback = (event, time, cycle) => {};
+      const callback = (_event: unknown, _time: number, _cycle: number) => {};
       const unsub = scheduler.onEvent(callback);
       expect(typeof unsub).toBe('function');
     });
@@ -239,8 +247,8 @@ describe('Scheduler', () => {
 
 describe('Scheduler timing calculations', () => {
   test('cycle position calculation', () => {
-    const mockContext = { currentTime: 0 };
-    const scheduler = new Scheduler(mockContext, () => {});
+    const mockContext: MockAudioContext = { currentTime: 0, state: 'running' };
+    const scheduler = createScheduler({ audioContext: mockContext as unknown as AudioContext, playFn: () => {} });
     scheduler.setCps(1.0); // 1 cycle per second
 
     scheduler.start();
@@ -259,8 +267,8 @@ describe('Scheduler timing calculations', () => {
   });
 
   test('cycle number calculation', () => {
-    const mockContext = { currentTime: 0 };
-    const scheduler = new Scheduler(mockContext, () => {});
+    const mockContext: MockAudioContext = { currentTime: 0, state: 'running' };
+    const scheduler = createScheduler({ audioContext: mockContext as unknown as AudioContext, playFn: () => {} });
     scheduler.setCps(1.0);
 
     scheduler.start();
@@ -278,8 +286,8 @@ describe('Scheduler timing calculations', () => {
   });
 
   test('different CPS values affect cycle position', () => {
-    const mockContext = { currentTime: 0 };
-    const scheduler = new Scheduler(mockContext, () => {});
+    const mockContext: MockAudioContext = { currentTime: 0, state: 'running' };
+    const scheduler = createScheduler({ audioContext: mockContext as unknown as AudioContext, playFn: () => {} });
 
     // At 0.5 CPS (default), 2 seconds = 1 cycle
     scheduler.setCps(0.5);
@@ -321,7 +329,7 @@ describe('Event scheduling logic', () => {
 
   test('dynamic patterns receive cycle number', () => {
     let receivedCycle = null;
-    const queryFn = (cycle) => {
+    const queryFn = (cycle: number) => {
       receivedCycle = cycle;
       return [];
     };

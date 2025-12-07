@@ -1,14 +1,17 @@
 export default {
   testEnvironment: 'node',
-  transform: {},
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', { useESM: true }],
+  },
+  extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   testMatch: [
-    '**/test/**/*.test.js'
+    '**/test/**/*.test.ts'
   ],
   collectCoverageFrom: [
-    'src/**/*.js',
-    '!src/index.js'
+    'src/**/*.ts',
+    '!src/index.ts'
   ]
 };

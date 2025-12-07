@@ -8,9 +8,9 @@ import { describe, test, expect } from '@jest/globals';
 import {
   makeDistortionCurve,
   makeHardClipCurve
-} from '../src/effects/distortion.js';
-import { mapResonanceToQ, FILTER_TYPES } from '../src/effects/filter.js';
-import { hasEffects } from '../src/effects/index.js';
+} from '../src/effects/distortion';
+import { mapResonanceToQ, FILTER_TYPES } from '../src/effects/filter';
+import { hasEffects } from '../src/effects/index';
 
 describe('Distortion curves', () => {
   test('makeDistortionCurve returns Float32Array', () => {
