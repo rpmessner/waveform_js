@@ -3,14 +3,12 @@
  * Handles fetching and decoding audio files into AudioBuffers
  */
 
+import type { ProgressCallback, SampleBankManifest } from '../types';
+
 /**
  * Load a single audio file and decode it to an AudioBuffer
- * @param {AudioContext} audioContext - The audio context to use for decoding
- * @param {string} url - URL of the audio file to load
- * @returns {Promise<AudioBuffer>} Decoded audio buffer
- * @throws {Error} If fetch fails or decoding fails
  */
-export async function loadSample(audioContext, url) {
+export async function loadSample(audioContext: AudioContext, url: string): Promise<AudioBuffer> {
   if (!audioContext) {
     throw new Error('AudioContext is required');
   }
@@ -36,7 +34,7 @@ export async function loadSample(audioContext, url) {
     return audioBuffer;
   } catch (error) {
     // Re-throw with more context
-    if (error.name === 'EncodingError') {
+    if (error instanceof Error && error.name === 'EncodingError') {
       throw new Error(`Failed to decode audio file: ${url} - unsupported format or corrupt file`);
     }
     throw error;
@@ -45,12 +43,11 @@ export async function loadSample(audioContext, url) {
 
 /**
  * Load multiple samples in parallel
- * @param {AudioContext} audioContext - The audio context to use for decoding
- * @param {Object} samples - Map of sample names to URLs
- * @returns {Promise<Object>} Map of sample names to AudioBuffers
- * @throws {Error} If any sample fails to load
  */
-export async function loadSamples(audioContext, samples) {
+export async function loadSamples(
+  audioContext: AudioContext,
+  samples: Record<string, string>
+): Promise<Record<string, AudioBuffer>> {
   if (!audioContext) {
     throw new Error('AudioContext is required');
   }
@@ -62,7 +59,7 @@ export async function loadSamples(audioContext, samples) {
   const entries = Object.entries(samples);
 
   // Load all samples in parallel
-  const promises = entries.map(async ([name, url]) => {
+  const promises = entries.map(async ([name, url]): Promise<[string, AudioBuffer]> => {
     const buffer = await loadSample(audioContext, url);
     return [name, buffer];
   });
@@ -75,12 +72,12 @@ export async function loadSamples(audioContext, samples) {
 
 /**
  * Load samples with progress tracking
- * @param {AudioContext} audioContext - The audio context to use for decoding
- * @param {Object} samples - Map of sample names to URLs
- * @param {Function} onProgress - Callback function (loaded, total, name)
- * @returns {Promise<Object>} Map of sample names to AudioBuffers
  */
-export async function loadSamplesWithProgress(audioContext, samples, onProgress) {
+export async function loadSamplesWithProgress(
+  audioContext: AudioContext,
+  samples: Record<string, string>,
+  onProgress?: ProgressCallback
+): Promise<Record<string, AudioBuffer>> {
   if (!audioContext) {
     throw new Error('AudioContext is required');
   }
@@ -93,7 +90,7 @@ export async function loadSamplesWithProgress(audioContext, samples, onProgress)
   const total = entries.length;
   let loaded = 0;
 
-  const results = {};
+  const results: Record<string, AudioBuffer> = {};
 
   // Load samples sequentially for progress tracking
   for (const [name, url] of entries) {
@@ -109,7 +106,7 @@ export async function loadSamplesWithProgress(audioContext, samples, onProgress)
       // Still report progress even on error
       loaded++;
       if (onProgress) {
-        onProgress(loaded, total, name, error);
+        onProgress(loaded, total, name, error instanceof Error ? error : new Error(String(error)));
       }
       throw error;
     }
@@ -120,21 +117,12 @@ export async function loadSamplesWithProgress(audioContext, samples, onProgress)
 
 /**
  * Load a sample bank from a JSON manifest
- * @param {AudioContext} audioContext - The audio context to use for decoding
- * @param {string} manifestUrl - URL of the JSON manifest file
- * @param {Function} onProgress - Optional progress callback
- * @returns {Promise<Object>} Map of sample names to AudioBuffers
- *
- * Manifest format:
- * {
- *   "baseUrl": "https://example.com/samples/",
- *   "samples": {
- *     "bd": ["bd/BT0A0A7.wav", "bd/BT0A0D0.wav"],
- *     "sn": ["sn/ST0T0S3.wav", "sn/ST0T3S3.wav"]
- *   }
- * }
  */
-export async function loadSampleBank(audioContext, manifestUrl, onProgress) {
+export async function loadSampleBank(
+  audioContext: AudioContext,
+  manifestUrl: string,
+  onProgress?: ProgressCallback
+): Promise<Record<string, AudioBuffer>> {
   if (!audioContext) {
     throw new Error('AudioContext is required');
   }
@@ -151,7 +139,7 @@ export async function loadSampleBank(audioContext, manifestUrl, onProgress) {
       throw new Error(`Failed to fetch manifest: ${response.status} ${response.statusText}`);
     }
 
-    const manifest = await response.json();
+    const manifest: SampleBankManifest = await response.json();
 
     // Validate manifest structure
     if (!manifest.samples || typeof manifest.samples !== 'object') {
@@ -161,7 +149,7 @@ export async function loadSampleBank(audioContext, manifestUrl, onProgress) {
     const baseUrl = manifest.baseUrl || '';
 
     // Flatten sample bank structure
-    const sampleUrls = {};
+    const sampleUrls: Record<string, string> = {};
 
     for (const [sampleName, variants] of Object.entries(manifest.samples)) {
       if (!Array.isArray(variants)) {
@@ -183,7 +171,7 @@ export async function loadSampleBank(audioContext, manifestUrl, onProgress) {
     }
 
   } catch (error) {
-    if (error.name === 'SyntaxError') {
+    if (error instanceof Error && error.name === 'SyntaxError') {
       throw new Error(`Failed to parse manifest JSON: ${manifestUrl}`);
     }
     throw error;

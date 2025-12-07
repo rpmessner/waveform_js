@@ -1,24 +1,23 @@
-import { noteToFreq } from '../utils/note-to-freq.js';
-import { clamp } from '../utils/db-to-gain.js';
-import { applyEffects, hasEffects } from '../effects/index.js';
+/**
+ * FM Synthesis
+ */
+
+import { noteToFreq } from '../utils/note-to-freq';
+import { clamp } from '../utils/db-to-gain';
+import { applyEffects, hasEffects } from '../effects/index';
+import type { SoundParams, FMPreset, FMPlaybackNodes, EffectChain } from '../types';
 
 /**
  * FM Synthesis Presets
- *
- * Each preset defines the FM algorithm parameters:
- * - operators: Array of {ratio, level, envelope} for each operator
- * - algorithm: How operators connect (for now: simple 2-op carrier-modulator)
  */
-export const FM_PRESETS = {
+export const FM_PRESETS: Record<string, FMPreset> = {
   // Electric piano (DX7-style)
   piano: {
-    // Carrier: fundamental frequency
     carrier: { ratio: 1, level: 1.0 },
-    // Modulator: creates harmonic complexity
     modulator: {
-      ratio: 1,           // 1:1 ratio for metallic EP character
-      index: 2.5,         // Modulation depth
-      indexDecay: 0.15    // How fast modulation decays (faster = bell-like)
+      ratio: 1,
+      index: 2.5,
+      indexDecay: 0.15
     },
     envelope: {
       attack: 0.005,
@@ -26,9 +25,8 @@ export const FM_PRESETS = {
       sustain: 0.2,
       release: 0.5
     },
-    // Second modulator for richer tone
     modulator2: {
-      ratio: 3,           // 3rd harmonic
+      ratio: 3,
       index: 0.8,
       indexDecay: 0.08
     }
@@ -56,7 +54,7 @@ export const FM_PRESETS = {
     modulator: {
       ratio: 2,
       index: 1.5,
-      indexDecay: 2.0     // Slow decay for evolving pad
+      indexDecay: 2.0
     },
     envelope: {
       attack: 0.3,
@@ -70,7 +68,7 @@ export const FM_PRESETS = {
   bell: {
     carrier: { ratio: 1, level: 1.0 },
     modulator: {
-      ratio: 3.5,         // Inharmonic ratio for bell character
+      ratio: 3.5,
       index: 5.0,
       indexDecay: 0.5
     },
@@ -88,7 +86,7 @@ export const FM_PRESETS = {
     modulator: {
       ratio: 1,
       index: 1.0,
-      indexDecay: 10.0    // Very slow = sustained organ tone
+      indexDecay: 10.0
     },
     modulator2: {
       ratio: 2,
@@ -106,27 +104,13 @@ export const FM_PRESETS = {
 
 /**
  * Play an FM synthesized sound
- * @param {AudioContext} audioContext - The audio context
- * @param {AudioNode} destination - Where to connect output
- * @param {Object} params - Sound parameters
- * @param {string} params.preset - FM preset name ('piano', 'fm', 'pad', 'bell', 'organ')
- * @param {number} params.note - MIDI note number
- * @param {number} params.freq - Frequency in Hz (alternative to note)
- * @param {number} params.amp - Amplitude 0-1
- * @param {number} params.gain - Gain multiplier
- * @param {number} params.pan - Stereo pan -1 to 1
- * @param {number} params.fm - Modulation index override
- * @param {number} params.fmh - FM harmonicity (modulator ratio) override
- * @param {number} params.attack - Attack override
- * @param {number} params.decay - Decay override
- * @param {number} params.sustain - Sustain override
- * @param {number} params.release - Release override
- * @param {number} params.duration - Note duration
- * @param {number} params.cutoff - Filter cutoff
- * @param {number} params.resonance - Filter resonance
- * @param {number} startTime - When to start
  */
-export function playFMSynth(audioContext, destination, params, startTime = null) {
+export function playFMSynth(
+  audioContext: AudioContext,
+  destination: AudioNode,
+  params: SoundParams,
+  startTime: number | null = null
+): FMPlaybackNodes {
   const now = startTime ?? audioContext.currentTime;
 
   // Get preset
@@ -134,7 +118,7 @@ export function playFMSynth(audioContext, destination, params, startTime = null)
   const preset = FM_PRESETS[presetName] || FM_PRESETS.piano;
 
   // Get base frequency
-  let frequency;
+  let frequency: number;
   if (params.freq !== undefined) {
     frequency = params.freq;
   } else if (params.note !== undefined) {
@@ -156,7 +140,7 @@ export function playFMSynth(audioContext, destination, params, startTime = null)
     release: params.release ?? preset.envelope.release
   };
 
-  const duration = params.duration ?? (envelope.attack + envelope.decay + 0.1);
+  const duration = params.duration ?? (envelope.attack! + envelope.decay! + 0.1);
 
   // Allow FM parameter overrides
   const modIndex = params.fm ?? preset.modulator.index;
@@ -187,7 +171,6 @@ export function playFMSynth(audioContext, destination, params, startTime = null)
   // Apply index decay (modulation becomes weaker over time)
   const indexDecay = preset.modulator.indexDecay;
   if (indexDecay < 5) {
-    // Fast decay: exponential
     modulatorGain.gain.exponentialRampToValueAtTime(
       modDepth * 0.01,
       now + indexDecay
@@ -199,8 +182,8 @@ export function playFMSynth(audioContext, destination, params, startTime = null)
   modulatorGain.connect(carrier.frequency);
 
   // Optional second modulator for richer tone
-  let modulator2 = null;
-  let modulatorGain2 = null;
+  let modulator2: OscillatorNode | undefined;
+  let modulatorGain2: GainNode | undefined;
   if (preset.modulator2) {
     modulator2 = audioContext.createOscillator();
     modulator2.type = 'sine';
@@ -226,21 +209,21 @@ export function playFMSynth(audioContext, destination, params, startTime = null)
   carrierGain.connect(outputGain);
 
   // Apply ADSR envelope to carrier gain
-  const attackEnd = now + envelope.attack;
-  const decayEnd = attackEnd + envelope.decay;
+  const attackEnd = now + envelope.attack!;
+  const decayEnd = attackEnd + envelope.decay!;
   const sustainEnd = now + duration;
-  const releaseEnd = sustainEnd + envelope.release;
+  const releaseEnd = sustainEnd + envelope.release!;
 
   carrierGain.gain.setValueAtTime(0, now);
   carrierGain.gain.linearRampToValueAtTime(totalGain, attackEnd);
-  carrierGain.gain.linearRampToValueAtTime(totalGain * envelope.sustain, decayEnd);
-  carrierGain.gain.setValueAtTime(totalGain * envelope.sustain, sustainEnd);
+  carrierGain.gain.linearRampToValueAtTime(totalGain * envelope.sustain!, decayEnd);
+  carrierGain.gain.setValueAtTime(totalGain * envelope.sustain!, sustainEnd);
   carrierGain.gain.linearRampToValueAtTime(0, releaseEnd);
 
   const totalDuration = releaseEnd - now;
 
   // Create filter if cutoff specified
-  let filterNode = null;
+  let filterNode: BiquadFilterNode | undefined;
   if (params.cutoff !== undefined) {
     filterNode = audioContext.createBiquadFilter();
     filterNode.type = 'lowpass';
@@ -255,14 +238,14 @@ export function playFMSynth(audioContext, destination, params, startTime = null)
   }
 
   // Create panner if pan specified
-  let panNode = null;
+  let panNode: StereoPannerNode | undefined;
   if (params.pan !== undefined && params.pan !== 0) {
     panNode = audioContext.createStereoPanner();
     panNode.pan.setValueAtTime(clamp(params.pan, -1, 1), now);
   }
 
   // Connect output chain
-  let currentNode = filterNode || outputGain;
+  let currentNode: AudioNode = filterNode || outputGain;
 
   if (panNode) {
     currentNode.connect(panNode);
@@ -270,7 +253,7 @@ export function playFMSynth(audioContext, destination, params, startTime = null)
   }
 
   // Apply effects if present
-  let effectsChain = null;
+  let effectsChain: EffectChain | null = null;
   if (hasEffects(params)) {
     effectsChain = applyEffects(audioContext, currentNode, destination, params);
   } else {
@@ -295,7 +278,7 @@ export function playFMSynth(audioContext, destination, params, startTime = null)
     outputGain.disconnect();
     if (modulator2) {
       modulator2.disconnect();
-      modulatorGain2.disconnect();
+      modulatorGain2?.disconnect();
     }
     if (filterNode) filterNode.disconnect();
     if (panNode) panNode.disconnect();
@@ -308,6 +291,7 @@ export function playFMSynth(audioContext, destination, params, startTime = null)
     modulator2,
     carrierGain,
     outputGain,
+    gainNode: carrierGain,
     filterNode,
     panNode,
     effectsChain,
@@ -318,6 +302,6 @@ export function playFMSynth(audioContext, destination, params, startTime = null)
 /**
  * Check if a synth name should use FM synthesis
  */
-export function isFMSynth(name) {
+export function isFMSynth(name: string): boolean {
   return name in FM_PRESETS;
 }

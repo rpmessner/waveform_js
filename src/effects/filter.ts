@@ -3,10 +3,12 @@
  * SuperDirt-compatible parameters: cutoff, resonance, hcutoff, bandf, bandq
  */
 
+import type { SoundParams, FilterResult } from '../types';
+
 /**
  * Filter types
  */
-export const FILTER_TYPES = {
+export const FILTER_TYPES: Record<string, BiquadFilterType> = {
   lowpass: 'lowpass',
   highpass: 'highpass',
   bandpass: 'bandpass',
@@ -17,19 +19,56 @@ export const FILTER_TYPES = {
   highshelf: 'highshelf'
 };
 
+interface FilterNodeParams {
+  frequency?: number;
+  Q?: number;
+  gain?: number;
+}
+
+/**
+ * Create a specific filter node
+ */
+function createFilterNode(
+  audioContext: AudioContext,
+  type: BiquadFilterType,
+  params: FilterNodeParams
+): FilterResult {
+  const filter = audioContext.createBiquadFilter();
+
+  filter.type = type;
+
+  if (params.frequency !== undefined) {
+    filter.frequency.value = params.frequency;
+  }
+
+  if (params.Q !== undefined) {
+    filter.Q.value = params.Q;
+  }
+
+  if (params.gain !== undefined) {
+    filter.gain.value = params.gain;
+  }
+
+  return { filter, type };
+}
+
+/**
+ * Map resonance (0-1) to Q value
+ * resonance 0 = Q ~0.7 (no resonance)
+ * resonance 1 = Q ~20 (high resonance)
+ */
+export function mapResonanceToQ(resonance: number): number {
+  // Exponential mapping for more musical response
+  return 0.7 + Math.pow(resonance, 2) * 19.3;
+}
+
 /**
  * Create a filter node
- * @param {AudioContext} audioContext - The audio context
- * @param {Object} params - Filter parameters
- * @param {number} params.cutoff - Lowpass cutoff frequency in Hz
- * @param {number} params.resonance - Filter resonance (0.0-1.0)
- * @param {number} params.hcutoff - Highpass cutoff frequency in Hz
- * @param {number} params.bandf - Bandpass center frequency in Hz
- * @param {number} params.bandq - Bandpass Q/width
- * @param {string} params.filterType - Explicit filter type override
- * @returns {Object} { filter, type } or null if no filter params
  */
-export function createFilter(audioContext, params = {}) {
+export function createFilter(
+  audioContext: AudioContext,
+  params: SoundParams = {}
+): FilterResult | null {
   const {
     cutoff,
     resonance,
@@ -70,52 +109,21 @@ export function createFilter(audioContext, params = {}) {
   return null;
 }
 
-/**
- * Create a specific filter node
- * @param {AudioContext} audioContext
- * @param {string} type - Filter type
- * @param {Object} params - { frequency, Q, gain }
- * @returns {Object} { filter, type }
- */
-function createFilterNode(audioContext, type, params) {
-  const filter = audioContext.createBiquadFilter();
-
-  filter.type = type;
-
-  if (params.frequency !== undefined) {
-    filter.frequency.value = params.frequency;
-  }
-
-  if (params.Q !== undefined) {
-    filter.Q.value = params.Q;
-  }
-
-  if (params.gain !== undefined) {
-    filter.gain.value = params.gain;
-  }
-
-  return { filter, type };
-}
-
-/**
- * Map resonance (0-1) to Q value
- * resonance 0 = Q ~0.7 (no resonance)
- * resonance 1 = Q ~20 (high resonance)
- * @param {number} resonance - 0.0 to 1.0
- * @returns {number} Q value
- */
-export function mapResonanceToQ(resonance) {
-  // Exponential mapping for more musical response
-  return 0.7 + Math.pow(resonance, 2) * 19.3;
+/** Multi-mode filter nodes */
+export interface MultiModeFilterNodes {
+  input: GainNode;
+  output: GainNode;
+  highpass?: BiquadFilterNode;
+  lowpass?: BiquadFilterNode;
 }
 
 /**
  * Create a multi-mode filter (lowpass + highpass for bandpass-like effect)
- * @param {AudioContext} audioContext
- * @param {Object} params
- * @returns {Object} { input, output, lowpass, highpass }
  */
-export function createMultiModeFilter(audioContext, params = {}) {
+export function createMultiModeFilter(
+  audioContext: AudioContext,
+  params: SoundParams = {}
+): MultiModeFilterNodes | null {
   const { cutoff, hcutoff, resonance } = params;
 
   // Need at least one cutoff
@@ -125,9 +133,9 @@ export function createMultiModeFilter(audioContext, params = {}) {
 
   const input = audioContext.createGain();
   const output = audioContext.createGain();
-  let lastNode = input;
+  let lastNode: AudioNode = input;
 
-  const filters = {};
+  const filters: { highpass?: BiquadFilterNode; lowpass?: BiquadFilterNode } = {};
 
   // Highpass first (if specified)
   if (hcutoff !== undefined) {
@@ -160,15 +168,22 @@ export function createMultiModeFilter(audioContext, params = {}) {
   };
 }
 
+/** Vowel filter nodes */
+export interface VowelFilterNodes {
+  input: GainNode;
+  output: GainNode;
+  filters: BiquadFilterNode[];
+}
+
 /**
  * Create a vowel filter (formant filter for vocal-like sounds)
- * @param {AudioContext} audioContext
- * @param {string} vowel - 'a', 'e', 'i', 'o', 'u'
- * @returns {Object} Filter chain
  */
-export function createVowelFilter(audioContext, vowel = 'a') {
+export function createVowelFilter(
+  audioContext: AudioContext,
+  vowel: string = 'a'
+): VowelFilterNodes {
   // Formant frequencies for vowels (F1, F2, F3)
-  const formants = {
+  const formants: Record<string, number[]> = {
     'a': [800, 1200, 2500],
     'e': [400, 2200, 2600],
     'i': [300, 2300, 3000],
@@ -182,7 +197,7 @@ export function createVowelFilter(audioContext, vowel = 'a') {
   const output = audioContext.createGain();
 
   // Create parallel bandpass filters for each formant
-  const filters = freqs.map((freq, i) => {
+  const filters = freqs.map((freq) => {
     const bp = audioContext.createBiquadFilter();
     bp.type = 'bandpass';
     bp.frequency.value = freq;

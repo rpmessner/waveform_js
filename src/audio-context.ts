@@ -3,25 +3,33 @@
  * Handles browser autoplay policy and state management
  */
 
-let audioContext = null;
-let masterGain = null;
-let analyser = null;
-let state = 'uninitialized'; // 'uninitialized', 'suspended', 'running', 'closed'
+import type { AudioContextState, WaveformOptions } from './types';
+
+// Extend Window for webkit prefix
+declare global {
+  interface Window {
+    webkitAudioContext: typeof AudioContext;
+  }
+}
+
+let audioContext: AudioContext | null = null;
+let masterGain: GainNode | null = null;
+let analyser: AnalyserNode | null = null;
+let state: AudioContextState = 'uninitialized';
 
 /**
  * Initialize the audio context
  * Must be called from a user gesture (click, keypress, etc.)
- * @param {Object} options - AudioContext options
- * @returns {Promise<AudioContext>} The initialized audio context
  */
-export async function init(options = {}) {
+export async function init(options: WaveformOptions = {}): Promise<AudioContext> {
   if (audioContext && state !== 'closed') {
     console.warn('AudioContext already initialized');
     return audioContext;
   }
 
   // Create audio context
-  audioContext = new (window.AudioContext || window.webkitAudioContext)(options);
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  audioContext = new AudioContextClass(options);
 
   // Create master gain node
   masterGain = audioContext.createGain();
@@ -35,7 +43,7 @@ export async function init(options = {}) {
   masterGain.connect(analyser);
 
   // Update state
-  state = audioContext.state;
+  state = audioContext.state as AudioContextState;
 
   // Resume if needed (handles autoplay policy)
   if (audioContext.state === 'suspended') {
@@ -45,7 +53,9 @@ export async function init(options = {}) {
 
   // Listen for state changes
   audioContext.addEventListener('statechange', () => {
-    state = audioContext.state;
+    if (audioContext) {
+      state = audioContext.state as AudioContextState;
+    }
   });
 
   return audioContext;
@@ -53,33 +63,29 @@ export async function init(options = {}) {
 
 /**
  * Get the current audio context
- * @returns {AudioContext|null} The audio context or null if not initialized
  */
-export function getContext() {
+export function getContext(): AudioContext | null {
   return audioContext;
 }
 
 /**
  * Get the master gain node
- * @returns {GainNode|null} The master gain node or null if not initialized
  */
-export function getMasterGain() {
+export function getMasterGain(): GainNode | null {
   return masterGain;
 }
 
 /**
  * Get the current state
- * @returns {string} Current state
  */
-export function getState() {
+export function getState(): AudioContextState {
   return state;
 }
 
 /**
  * Suspend the audio context (pause audio processing)
- * @returns {Promise<void>}
  */
-export async function suspend() {
+export async function suspend(): Promise<void> {
   if (!audioContext) {
     throw new Error('AudioContext not initialized');
   }
@@ -92,9 +98,8 @@ export async function suspend() {
 
 /**
  * Resume the audio context
- * @returns {Promise<void>}
  */
-export async function resume() {
+export async function resume(): Promise<void> {
   if (!audioContext) {
     throw new Error('AudioContext not initialized');
   }
@@ -107,9 +112,8 @@ export async function resume() {
 
 /**
  * Close the audio context
- * @returns {Promise<void>}
  */
-export async function close() {
+export async function close(): Promise<void> {
   if (!audioContext) {
     throw new Error('AudioContext not initialized');
   }
@@ -123,10 +127,8 @@ export async function close() {
 
 /**
  * Set the master gain (volume)
- * @param {number} gain - Gain value (0-2, default 1)
- * @param {number} rampTime - Time to ramp to new value in seconds (default: 0.01)
  */
-export function setMasterGain(gain, rampTime = 0.01) {
+export function setMasterGain(gain: number, rampTime: number = 0.01): void {
   if (!masterGain || !audioContext) {
     throw new Error('AudioContext not initialized');
   }
@@ -139,9 +141,8 @@ export function setMasterGain(gain, rampTime = 0.01) {
 
 /**
  * Get the current master gain value
- * @returns {number} Current master gain
  */
-export function getMasterGainValue() {
+export function getMasterGainValue(): number {
   if (!masterGain) {
     throw new Error('AudioContext not initialized');
   }
@@ -150,17 +151,15 @@ export function getMasterGainValue() {
 
 /**
  * Get the analyser node for visualizations
- * @returns {AnalyserNode|null} The analyser node or null if not initialized
  */
-export function getAnalyser() {
+export function getAnalyser(): AnalyserNode | null {
   return analyser;
 }
 
 /**
  * Get frequency data from the analyser
- * @returns {Uint8Array|null} Frequency data array or null if not initialized
  */
-export function getFrequencyData() {
+export function getFrequencyData(): Uint8Array | null {
   if (!analyser) return null;
   const data = new Uint8Array(analyser.frequencyBinCount);
   analyser.getByteFrequencyData(data);
@@ -169,9 +168,8 @@ export function getFrequencyData() {
 
 /**
  * Get time domain (waveform) data from the analyser
- * @returns {Uint8Array|null} Time domain data array or null if not initialized
  */
-export function getTimeDomainData() {
+export function getTimeDomainData(): Uint8Array | null {
   if (!analyser) return null;
   const data = new Uint8Array(analyser.fftSize);
   analyser.getByteTimeDomainData(data);

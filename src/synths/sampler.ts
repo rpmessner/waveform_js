@@ -3,31 +3,56 @@
  * Plays AudioBuffer sources with SuperDirt-compatible parameters
  */
 
-import { applyADSR } from './envelope.js';
-import { applyEffects, hasEffects } from '../effects/index.js';
+import { applyEffects, hasEffects } from '../effects/index';
+import type { SoundParams, PlaybackNodes, EffectChain } from '../types';
+
+interface EnvelopeResult {
+  releaseTime: number;
+  stopTime: number;
+}
+
+/**
+ * Apply ADSR envelope to gain parameter
+ */
+function applyADSR(
+  gainParam: AudioParam,
+  totalGain: number,
+  params: { attack?: number; decay?: number; sustain?: number; release?: number; duration?: number },
+  startTime: number
+): EnvelopeResult {
+  const attack = params.attack ?? 0.01;
+  const decay = params.decay ?? 0.1;
+  const sustain = params.sustain ?? 0.7;
+  const release = params.release ?? 0.3;
+  const duration = params.duration ?? (attack + decay + 0.1);
+
+  const attackEnd = startTime + attack;
+  const decayEnd = attackEnd + decay;
+  const sustainEnd = startTime + duration;
+  const releaseEnd = sustainEnd + release;
+
+  gainParam.setValueAtTime(0, startTime);
+  gainParam.linearRampToValueAtTime(totalGain, attackEnd);
+  gainParam.linearRampToValueAtTime(sustain * totalGain, decayEnd);
+  gainParam.setValueAtTime(sustain * totalGain, sustainEnd);
+  gainParam.linearRampToValueAtTime(0, releaseEnd);
+
+  return {
+    releaseTime: release,
+    stopTime: releaseEnd
+  };
+}
 
 /**
  * Play a sample (AudioBuffer) with parameters
- * @param {AudioContext} audioContext - The audio context
- * @param {AudioNode} destination - The destination node (usually master gain)
- * @param {AudioBuffer} audioBuffer - The sample to play
- * @param {Object} params - Playback parameters
- * @param {number} params.speed - Playback rate/speed (default: 1.0)
- * @param {number} params.begin - Start position 0.0-1.0 (default: 0.0)
- * @param {number} params.end - End position 0.0-1.0 (default: 1.0)
- * @param {number} params.gain - Volume 0-2 (default: 1.0)
- * @param {number} params.amp - Amplitude 0-1 (default: 0.5)
- * @param {number} params.pan - Stereo pan -1 to 1 (default: 0)
- * @param {number} params.attack - Envelope attack in seconds
- * @param {number} params.decay - Envelope decay in seconds
- * @param {number} params.sustain - Envelope sustain level 0-1
- * @param {number} params.release - Envelope release in seconds
- * @param {number} params.cutoff - Filter cutoff frequency in Hz
- * @param {number} params.resonance - Filter resonance 0-1
- * @param {number} startTime - When to start playback (audio context time)
- * @returns {Object} Created audio nodes for potential manipulation
  */
-export function playSample(audioContext, destination, audioBuffer, params = {}, startTime = null) {
+export function playSample(
+  audioContext: AudioContext,
+  destination: AudioNode,
+  audioBuffer: AudioBuffer,
+  params: SoundParams = {},
+  startTime: number | null = null
+): PlaybackNodes {
   const now = audioContext.currentTime;
   const start = startTime !== null ? startTime : now;
 
@@ -64,7 +89,6 @@ export function playSample(audioContext, destination, audioBuffer, params = {}, 
   let stopTime = start + playDuration;
 
   if (hasEnvelope) {
-    // Use ADSR envelope
     const envelopeParams = {
       attack: params.attack,
       decay: params.decay,
@@ -77,7 +101,6 @@ export function playSample(audioContext, destination, audioBuffer, params = {}, 
     releaseTime = envelope.releaseTime;
     stopTime = envelope.stopTime;
   } else {
-    // No envelope - just set constant gain
     gainNode.gain.setValueAtTime(totalGain, start);
   }
 
@@ -86,14 +109,13 @@ export function playSample(audioContext, destination, audioBuffer, params = {}, 
   panNode.pan.setValueAtTime(pan, start);
 
   // Create filter if cutoff is specified
-  let filterNode = null;
+  let filterNode: BiquadFilterNode | undefined;
   if (params.cutoff !== undefined) {
     filterNode = audioContext.createBiquadFilter();
     filterNode.type = 'lowpass';
     filterNode.frequency.setValueAtTime(params.cutoff, start);
 
     if (params.resonance !== undefined) {
-      // Map 0-1 resonance to 0.0001-20 Q value
       const q = 0.0001 + (params.resonance * 19.9999);
       filterNode.Q.setValueAtTime(q, start);
     }
@@ -110,7 +132,7 @@ export function playSample(audioContext, destination, audioBuffer, params = {}, 
   }
 
   // Apply effects chain if any effect parameters are present
-  let effectsChain = null;
+  let effectsChain: EffectChain | null = null;
   if (hasEffects(params)) {
     effectsChain = applyEffects(audioContext, panNode, destination, params);
   } else {
@@ -119,15 +141,13 @@ export function playSample(audioContext, destination, audioBuffer, params = {}, 
 
   // Schedule playback
   if (begin > 0 || end < 1) {
-    // Play a slice of the sample
     source.start(start, startOffset, endOffset - startOffset);
   } else {
-    // Play entire sample
     source.start(start);
   }
 
   // Schedule cleanup after release completes
-  const cleanupTime = stopTime + 0.1; // Small buffer after stop time
+  const cleanupTime = stopTime + 0.1;
   source.stop(stopTime);
 
   setTimeout(() => {
@@ -141,7 +161,7 @@ export function playSample(audioContext, destination, audioBuffer, params = {}, 
       if (effectsChain) {
         effectsChain.disconnect();
       }
-    } catch (e) {
+    } catch (_e) {
       // Already disconnected, ignore
     }
   }, (cleanupTime - now) * 1000);
@@ -160,32 +180,33 @@ export function playSample(audioContext, destination, audioBuffer, params = {}, 
 /**
  * Convenience function to play a sample with note parameter
  * Note parameter adjusts playback speed to pitch the sample
- * @param {AudioContext} audioContext - The audio context
- * @param {AudioNode} destination - The destination node
- * @param {AudioBuffer} audioBuffer - The sample to play
- * @param {Object} params - Playback parameters (includes note)
- * @param {number} startTime - When to start playback
- * @returns {Object} Created audio nodes
  */
-export function playSampleWithNote(audioContext, destination, audioBuffer, params = {}, startTime = null) {
+export function playSampleWithNote(
+  audioContext: AudioContext,
+  destination: AudioNode,
+  audioBuffer: AudioBuffer,
+  params: SoundParams = {},
+  startTime: number | null = null
+): PlaybackNodes {
   // If note parameter is specified, calculate speed from it
   // Assume sample is recorded at C4 (MIDI note 60) by default
   const baseNote = params.baseNote ?? 60;
   const note = params.note;
 
+  let adjustedParams = params;
+
   if (note !== undefined && note !== null) {
     // Calculate speed from note
-    // Each semitone is 2^(1/12) ratio
     const semitoneOffset = note - baseNote;
     const calculatedSpeed = Math.pow(2, semitoneOffset / 12);
 
     // Multiply by any explicit speed parameter
     const explicitSpeed = params.speed ?? 1.0;
-    params = {
+    adjustedParams = {
       ...params,
       speed: calculatedSpeed * explicitSpeed
     };
   }
 
-  return playSample(audioContext, destination, audioBuffer, params, startTime);
+  return playSample(audioContext, destination, audioBuffer, adjustedParams, startTime);
 }

@@ -1,33 +1,38 @@
-import { noteToFreq } from '../utils/note-to-freq.js';
-import { clamp } from '../utils/db-to-gain.js';
-import { applyADSR } from './envelope.js';
-import { applyEffects, hasEffects } from '../effects/index.js';
+/**
+ * Oscillator synth
+ */
+
+import { noteToFreq } from '../utils/note-to-freq';
+import { clamp } from '../utils/db-to-gain';
+import { applyADSR } from './envelope';
+import { applyEffects, hasEffects } from '../effects/index';
+import type { SoundParams, OscillatorPlaybackNodes, EffectChain } from '../types';
+
+/**
+ * Synth types mapping
+ */
+export const SYNTH_TYPES: Record<string, OscillatorType> = {
+  sine: 'sine',
+  saw: 'sawtooth',
+  sawtooth: 'sawtooth',
+  square: 'square',
+  tri: 'triangle',
+  triangle: 'triangle'
+};
 
 /**
  * Create and play an oscillator synth
- * @param {AudioContext} audioContext - The audio context
- * @param {AudioNode} destination - Where to connect the output
- * @param {Object} params - Synth parameters
- * @param {string} params.type - Oscillator type: 'sine', 'square', 'sawtooth', 'triangle'
- * @param {number} params.note - MIDI note number (0-127)
- * @param {number} params.freq - Frequency in Hz (alternative to note)
- * @param {number} params.amp - Amplitude 0-1 (default: 0.5)
- * @param {number} params.gain - Gain multiplier (default: 1.0)
- * @param {number} params.pan - Stereo pan -1 to 1 (default: 0)
- * @param {number} params.attack - Attack time in seconds
- * @param {number} params.decay - Decay time in seconds
- * @param {number} params.sustain - Sustain level 0-1
- * @param {number} params.release - Release time in seconds
- * @param {number} params.duration - Total note duration in seconds
- * @param {number} params.cutoff - Filter cutoff frequency in Hz
- * @param {number} params.resonance - Filter resonance/Q 0-1
- * @param {number} startTime - When to start (audio context time, default: now)
  */
-export function playOscillator(audioContext, destination, params, startTime = null) {
+export function playOscillator(
+  audioContext: AudioContext,
+  destination: AudioNode,
+  params: SoundParams,
+  startTime: number | null = null
+): OscillatorPlaybackNodes {
   const now = startTime ?? audioContext.currentTime;
 
   // Get frequency
-  let frequency;
+  let frequency: number;
   if (params.freq !== undefined) {
     frequency = params.freq;
   } else if (params.note !== undefined) {
@@ -48,7 +53,7 @@ export function playOscillator(audioContext, destination, params, startTime = nu
   const totalGain = amp * gain;
 
   // Create filter if cutoff is specified
-  let filterNode = null;
+  let filterNode: BiquadFilterNode | undefined;
   if (params.cutoff !== undefined) {
     filterNode = audioContext.createBiquadFilter();
     filterNode.type = 'lowpass';
@@ -62,14 +67,14 @@ export function playOscillator(audioContext, destination, params, startTime = nu
   }
 
   // Create panner if pan is specified
-  let panNode = null;
+  let panNode: StereoPannerNode | undefined;
   if (params.pan !== undefined && params.pan !== 0) {
     panNode = audioContext.createStereoPanner();
     panNode.pan.setValueAtTime(clamp(params.pan, -1, 1), now);
   }
 
   // Connect nodes
-  let currentNode = osc;
+  let currentNode: AudioNode = osc;
 
   if (filterNode) {
     currentNode.connect(filterNode);
@@ -85,7 +90,7 @@ export function playOscillator(audioContext, destination, params, startTime = nu
   }
 
   // Apply effects chain if any effect parameters are present
-  let effectsChain = null;
+  let effectsChain: EffectChain | null = null;
   if (hasEffects(params)) {
     effectsChain = applyEffects(audioContext, currentNode, destination, params);
   } else {
@@ -126,15 +131,3 @@ export function playOscillator(audioContext, destination, params, startTime = nu
     stopTime: now + totalDuration
   };
 }
-
-/**
- * Synth types mapping
- */
-export const SYNTH_TYPES = {
-  sine: 'sine',
-  saw: 'sawtooth',
-  sawtooth: 'sawtooth',
-  square: 'square',
-  tri: 'triangle',
-  triangle: 'triangle'
-};

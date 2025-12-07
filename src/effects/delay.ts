@@ -3,16 +3,15 @@
  * SuperDirt-compatible parameters: delay, delaytime, delayfeedback
  */
 
+import type { SoundParams, DelayNodes } from '../types';
+
 /**
  * Create a delay effect node
- * @param {AudioContext} audioContext - The audio context
- * @param {Object} params - Effect parameters
- * @param {number} params.delay - Wet/dry mix (0.0-1.0)
- * @param {number} params.delaytime - Delay time in seconds (default: 0.5)
- * @param {number} params.delayfeedback - Feedback amount (0.0-1.0, default: 0.5)
- * @returns {Object} { input, output, delayNode, feedbackGain, wetGain, dryGain }
  */
-export function createDelay(audioContext, params = {}) {
+export function createDelay(
+  audioContext: AudioContext,
+  params: SoundParams = {}
+): DelayNodes | null {
   const delay = params.delay ?? 0;
   const delaytime = params.delaytime ?? 0.5;
   const delayfeedback = params.delayfeedback ?? 0.5;
@@ -57,13 +56,25 @@ export function createDelay(audioContext, params = {}) {
   };
 }
 
+/** Ping-pong delay nodes */
+export interface PingPongDelayNodes {
+  input: GainNode;
+  output: GainNode;
+  delayL: DelayNode;
+  delayR: DelayNode;
+  feedbackL: GainNode;
+  feedbackR: GainNode;
+  wetGain: GainNode;
+  dryGain: GainNode;
+}
+
 /**
  * Create a ping-pong stereo delay
- * @param {AudioContext} audioContext - The audio context
- * @param {Object} params - Effect parameters
- * @returns {Object} Delay effect nodes
  */
-export function createPingPongDelay(audioContext, params = {}) {
+export function createPingPongDelay(
+  audioContext: AudioContext,
+  params: SoundParams = {}
+): PingPongDelayNodes | null {
   const delay = params.delay ?? 0;
   const delaytime = params.delaytime ?? 0.5;
   const delayfeedback = params.delayfeedback ?? 0.5;

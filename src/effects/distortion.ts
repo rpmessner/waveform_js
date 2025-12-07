@@ -3,13 +3,12 @@
  * SuperDirt-compatible parameters: shape, crush
  */
 
+import type { SoundParams, DistortionNodes } from '../types';
+
 /**
  * Generate a distortion curve for WaveShaperNode
- * @param {number} amount - Distortion amount (0-1)
- * @param {number} samples - Number of samples in curve
- * @returns {Float32Array} The distortion curve
  */
-export function makeDistortionCurve(amount = 0.5, samples = 44100) {
+export function makeDistortionCurve(amount: number = 0.5, samples: number = 44100): Float32Array {
   const curve = new Float32Array(samples);
   const k = amount * 100;
 
@@ -31,11 +30,8 @@ export function makeDistortionCurve(amount = 0.5, samples = 44100) {
 
 /**
  * Generate a hard clip distortion curve
- * @param {number} threshold - Clipping threshold (0-1)
- * @param {number} samples - Number of samples
- * @returns {Float32Array}
  */
-export function makeHardClipCurve(threshold = 0.8, samples = 44100) {
+export function makeHardClipCurve(threshold: number = 0.8, samples: number = 44100): Float32Array {
   const curve = new Float32Array(samples);
 
   for (let i = 0; i < samples; i++) {
@@ -48,13 +44,11 @@ export function makeHardClipCurve(threshold = 0.8, samples = 44100) {
 
 /**
  * Create a distortion effect
- * @param {AudioContext} audioContext - The audio context
- * @param {Object} params - Effect parameters
- * @param {number} params.shape - Distortion amount (0.0-1.0)
- * @param {string} params.distortionType - 'soft' or 'hard' (default: 'soft')
- * @returns {Object} { input, output, waveshaper } or null if no distortion
  */
-export function createDistortion(audioContext, params = {}) {
+export function createDistortion(
+  audioContext: AudioContext,
+  params: SoundParams = {}
+): DistortionNodes | null {
   const shape = params.shape ?? 0;
   const distortionType = params.distortionType ?? 'soft';
 
@@ -67,11 +61,11 @@ export function createDistortion(audioContext, params = {}) {
   const waveshaper = audioContext.createWaveShaper();
 
   // Generate appropriate curve
-  if (distortionType === 'hard') {
-    waveshaper.curve = makeHardClipCurve(1 - shape * 0.8);
-  } else {
-    waveshaper.curve = makeDistortionCurve(shape);
-  }
+  const curve = distortionType === 'hard'
+    ? makeHardClipCurve(1 - shape * 0.8)
+    : makeDistortionCurve(shape);
+  // @ts-expect-error - TypeScript Web Audio type issue with Float32Array<ArrayBufferLike>
+  waveshaper.curve = curve;
 
   waveshaper.oversample = shape > 0.5 ? '4x' : '2x';
 
@@ -91,17 +85,22 @@ export function createDistortion(audioContext, params = {}) {
   };
 }
 
+/** Bitcrusher nodes */
+export interface BitcrusherNodes {
+  input: GainNode;
+  output: GainNode;
+  waveshaper: WaveShaperNode;
+  bits: number;
+}
+
 /**
  * Create a bitcrusher effect
- * @param {AudioContext} audioContext - The audio context
- * @param {Object} params - Effect parameters
- * @param {number} params.crush - Bit depth (1-16, lower = more crushed)
- * @param {number} params.coarse - Sample rate reduction factor
- * @returns {Object} { input, output, processor } or null
  */
-export function createBitcrusher(audioContext, params = {}) {
+export function createBitcrusher(
+  audioContext: AudioContext,
+  params: SoundParams = {}
+): BitcrusherNodes | null {
   const crush = params.crush;
-  const coarse = params.coarse ?? 1;
 
   if (crush === undefined || crush >= 16) {
     return null;
@@ -118,16 +117,16 @@ export function createBitcrusher(audioContext, params = {}) {
   const bits = Math.max(1, Math.min(16, crush));
   const levels = Math.pow(2, bits);
   const samples = 65536;
-  const curve = new Float32Array(samples);
+  const bitcrushCurve = new Float32Array(samples);
 
   for (let i = 0; i < samples; i++) {
     const x = (i * 2) / samples - 1;
     // Quantize to bit depth
-    curve[i] = Math.round(x * levels) / levels;
+    bitcrushCurve[i] = Math.round(x * levels) / levels;
   }
 
   const waveshaper = audioContext.createWaveShaper();
-  waveshaper.curve = curve;
+  waveshaper.curve = bitcrushCurve;
   waveshaper.oversample = 'none'; // No oversampling for that crunchy sound
 
   input.connect(waveshaper);
@@ -141,13 +140,23 @@ export function createBitcrusher(audioContext, params = {}) {
   };
 }
 
+/** Overdrive nodes */
+export interface OverdriveNodes {
+  input: GainNode;
+  output: GainNode;
+  preGain: GainNode;
+  waveshaper: WaveShaperNode;
+  toneFilter: BiquadFilterNode;
+  postGain: GainNode;
+}
+
 /**
  * Create a combined distortion + filter effect (common guitar-like sound)
- * @param {AudioContext} audioContext
- * @param {Object} params
- * @returns {Object} Effect chain
  */
-export function createOverdrive(audioContext, params = {}) {
+export function createOverdrive(
+  audioContext: AudioContext,
+  params: SoundParams = {}
+): OverdriveNodes {
   const drive = params.drive ?? 0.5;
   const tone = params.tone ?? 0.5;
 
@@ -160,7 +169,9 @@ export function createOverdrive(audioContext, params = {}) {
 
   // Distortion
   const waveshaper = audioContext.createWaveShaper();
-  waveshaper.curve = makeDistortionCurve(drive);
+  const overdriveCurve = makeDistortionCurve(drive);
+  // @ts-expect-error - TypeScript Web Audio type issue with Float32Array<ArrayBufferLike>
+  waveshaper.curve = overdriveCurve;
   waveshaper.oversample = '2x';
 
   // Tone control (lowpass filter)

@@ -3,14 +3,16 @@
  * Generates impulse responses procedurally (no external files needed)
  */
 
+import type { SoundParams, ReverbNodes } from '../types';
+
 /**
  * Generate a simple impulse response for reverb
- * @param {AudioContext} audioContext - The audio context
- * @param {number} duration - IR duration in seconds (controls size)
- * @param {number} decay - Decay rate (higher = faster decay)
- * @returns {AudioBuffer} The impulse response buffer
  */
-export function generateImpulseResponse(audioContext, duration = 2.0, decay = 2.0) {
+export function generateImpulseResponse(
+  audioContext: AudioContext,
+  duration: number = 2.0,
+  decay: number = 2.0
+): AudioBuffer {
   const sampleRate = audioContext.sampleRate;
   const length = sampleRate * duration;
   const buffer = audioContext.createBuffer(2, length, sampleRate);
@@ -32,10 +34,8 @@ export function generateImpulseResponse(audioContext, duration = 2.0, decay = 2.
 
 /**
  * Map room size (0-1) to impulse response parameters
- * @param {number} room - Room size 0.0-1.0
- * @returns {Object} { duration, decay }
  */
-function roomToParams(room) {
+function roomToParams(room: number): { duration: number; decay: number } {
   // room 0.0 = tiny room (0.3s, fast decay)
   // room 0.5 = medium room (1.5s, medium decay)
   // room 1.0 = large hall (4s, slow decay)
@@ -47,16 +47,16 @@ function roomToParams(room) {
 /**
  * Cache for generated impulse responses
  */
-const irCache = new Map();
+const irCache = new Map<string, AudioBuffer>();
 
 /**
  * Get or create impulse response for given parameters
- * @param {AudioContext} audioContext
- * @param {number} room
- * @param {number} size - Optional override for duration
- * @returns {AudioBuffer}
  */
-function getImpulseResponse(audioContext, room, size = null) {
+function getImpulseResponse(
+  audioContext: AudioContext,
+  room: number,
+  size: number | null = null
+): AudioBuffer {
   const { duration, decay } = roomToParams(room);
   const actualDuration = size !== null ? size : duration;
 
@@ -67,18 +67,16 @@ function getImpulseResponse(audioContext, room, size = null) {
     irCache.set(key, generateImpulseResponse(audioContext, actualDuration, decay));
   }
 
-  return irCache.get(key);
+  return irCache.get(key)!;
 }
 
 /**
  * Create a reverb effect node
- * @param {AudioContext} audioContext - The audio context
- * @param {Object} params - Effect parameters
- * @param {number} params.room - Room amount/wet-dry mix (0.0-1.0)
- * @param {number} params.size - Room size/decay time (0.0-1.0)
- * @returns {Object} { input, output, wetGain, dryGain, convolver }
  */
-export function createReverb(audioContext, params = {}) {
+export function createReverb(
+  audioContext: AudioContext,
+  params: SoundParams = {}
+): ReverbNodes | null {
   const room = params.room ?? 0;
   const size = params.size ?? null;
 
@@ -123,6 +121,6 @@ export function createReverb(audioContext, params = {}) {
 /**
  * Clear the impulse response cache
  */
-export function clearReverbCache() {
+export function clearReverbCache(): void {
   irCache.clear();
 }

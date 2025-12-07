@@ -3,10 +3,11 @@
  * Unified interface for all audio effects
  */
 
-import { createReverb, clearReverbCache } from './reverb.js';
-import { createDelay, createPingPongDelay } from './delay.js';
-import { createFilter, createMultiModeFilter, mapResonanceToQ, FILTER_TYPES } from './filter.js';
-import { createDistortion, createBitcrusher, createOverdrive } from './distortion.js';
+import { createReverb, clearReverbCache } from './reverb';
+import { createDelay, createPingPongDelay } from './delay';
+import { createFilter, createMultiModeFilter, mapResonanceToQ, FILTER_TYPES } from './filter';
+import { createDistortion, createBitcrusher, createOverdrive } from './distortion';
+import type { SoundParams, EffectChain, EffectNode } from '../types';
 
 // Re-export individual effect creators
 export {
@@ -25,10 +26,8 @@ export {
 
 /**
  * Check if params contain any effect parameters
- * @param {Object} params - Sound parameters
- * @returns {boolean}
  */
-export function hasEffects(params) {
+export function hasEffects(params: SoundParams): boolean {
   return (
     params.room !== undefined ||
     params.delay !== undefined ||
@@ -39,27 +38,21 @@ export function hasEffects(params) {
   );
 }
 
+interface EffectNodeWithIO {
+  input: GainNode | AudioNode;
+  output: GainNode | AudioNode;
+}
+
 /**
  * Create an effects chain from parameters
  * Returns null if no effects are specified
- *
- * @param {AudioContext} audioContext - The audio context
- * @param {Object} params - Sound parameters with effect values
- * @param {number} params.room - Reverb wet amount (0-1)
- * @param {number} params.size - Reverb size (0-1)
- * @param {number} params.delay - Delay wet amount (0-1)
- * @param {number} params.delaytime - Delay time in seconds
- * @param {number} params.delayfeedback - Delay feedback (0-1)
- * @param {number} params.shape - Distortion amount (0-1)
- * @param {number} params.crush - Bitcrusher depth (1-16)
- * @param {number} params.hcutoff - Highpass cutoff Hz
- * @param {number} params.bandf - Bandpass center frequency Hz
- * @param {number} params.bandq - Bandpass Q
- * @returns {Object|null} { input, output, effects[] } or null
  */
-export function createEffectsChain(audioContext, params = {}) {
-  const effects = [];
-  const nodes = [];
+export function createEffectsChain(
+  audioContext: AudioContext,
+  params: SoundParams = {}
+): EffectChain | null {
+  const effects: EffectNode[] = [];
+  const nodes: EffectNodeWithIO[] = [];
 
   // Order: Filter -> Distortion -> Delay -> Reverb
   // (This is a common effects chain order)
@@ -73,7 +66,7 @@ export function createEffectsChain(audioContext, params = {}) {
       bandq: params.bandq
     });
     if (filter) {
-      effects.push({ type: 'filter', ...filter });
+      effects.push({ type: 'filter', input: filter.input, output: filter.output });
       nodes.push(filter);
     }
   }
@@ -82,7 +75,7 @@ export function createEffectsChain(audioContext, params = {}) {
   if (params.crush !== undefined && params.crush < 16) {
     const crusher = createBitcrusher(audioContext, params);
     if (crusher) {
-      effects.push({ type: 'bitcrusher', ...crusher });
+      effects.push({ type: 'bitcrusher', input: crusher.input, output: crusher.output });
       nodes.push(crusher);
     }
   }
@@ -90,7 +83,7 @@ export function createEffectsChain(audioContext, params = {}) {
   if (params.shape !== undefined && params.shape > 0) {
     const dist = createDistortion(audioContext, params);
     if (dist) {
-      effects.push({ type: 'distortion', ...dist });
+      effects.push({ type: 'distortion', input: dist.input, output: dist.output });
       nodes.push(dist);
     }
   }
@@ -99,7 +92,7 @@ export function createEffectsChain(audioContext, params = {}) {
   if (params.delay !== undefined && params.delay > 0) {
     const delay = createDelay(audioContext, params);
     if (delay) {
-      effects.push({ type: 'delay', ...delay });
+      effects.push({ type: 'delay', input: delay.input, output: delay.output });
       nodes.push(delay);
     }
   }
@@ -108,7 +101,7 @@ export function createEffectsChain(audioContext, params = {}) {
   if (params.room !== undefined && params.room > 0) {
     const reverb = createReverb(audioContext, params);
     if (reverb) {
-      effects.push({ type: 'reverb', ...reverb });
+      effects.push({ type: 'reverb', input: reverb.input, output: reverb.output });
       nodes.push(reverb);
     }
   }
@@ -123,10 +116,10 @@ export function createEffectsChain(audioContext, params = {}) {
   const output = audioContext.createGain();
 
   // Chain effects together
-  let lastNode = input;
+  let lastNode: AudioNode = input;
   for (const node of nodes) {
-    lastNode.connect(node.input);
-    lastNode = node.output;
+    lastNode.connect(node.input as AudioNode);
+    lastNode = node.output as AudioNode;
   }
   lastNode.connect(output);
 
@@ -142,10 +135,10 @@ export function createEffectsChain(audioContext, params = {}) {
         input.disconnect();
         output.disconnect();
         for (const effect of effects) {
-          if (effect.input) effect.input.disconnect();
-          if (effect.output) effect.output.disconnect();
+          if (effect.input) (effect.input as AudioNode).disconnect();
+          if (effect.output) (effect.output as AudioNode).disconnect();
         }
-      } catch (e) {
+      } catch (_e) {
         // Already disconnected
       }
     }
@@ -155,14 +148,13 @@ export function createEffectsChain(audioContext, params = {}) {
 /**
  * Apply effects chain between source and destination
  * If no effects, connects source directly to destination
- *
- * @param {AudioContext} audioContext
- * @param {AudioNode} source - Source node to process
- * @param {AudioNode} destination - Final destination
- * @param {Object} params - Effect parameters
- * @returns {Object|null} Effects chain or null if no effects
  */
-export function applyEffects(audioContext, source, destination, params) {
+export function applyEffects(
+  audioContext: AudioContext,
+  source: AudioNode,
+  destination: AudioNode,
+  params: SoundParams
+): EffectChain | null {
   const chain = createEffectsChain(audioContext, params);
 
   if (chain) {
