@@ -6,7 +6,7 @@
 
 **Purpose:** Foundation for browser-based music applications, live coding environments, and generative audio tools.
 
-**Status:** Phase 1 Complete (Basic synth playback working)
+**Status:** Complete - All features working, factory function API
 
 ## Architecture
 
@@ -14,23 +14,18 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Client Applications                       │
-│  kino_undertow (Livebook) │ undertow.nvim (Neovim) │ Web REPL   │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │
-         ┌─────────────────┴─────────────────┐
-         │                                   │
-         ▼                                   ▼
-┌─────────────────────┐           ┌─────────────────────┐
-│  undertow_repl_js   │           │   UndertowServer    │
-│  (REPL UI)          │◀─────────▶│   (coordination)    │
-└─────────┬───────────┘           └──────────┬──────────┘
-          │                                   │
-          ▼                                   ▼
-┌─────────────────────┐           ┌─────────────────────┐
-│   waveform_js       │ ◀── HERE  │    waveform         │
-│   (Web Audio)       │           │   (SuperCollider)   │
-└─────────────────────┘           └─────────────────────┘
+│                        Your Application                          │
+│        Livebook / Web REPL / Custom UI / etc.                   │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      waveform_js ◀── HERE                        │
+│  • Web Audio context lifecycle                                   │
+│  • Synthesis (oscillators, samples, envelopes)                  │
+│  • Effects processing                                            │
+│  • Pattern scheduling with cycle-based timing                   │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### What waveform_js Handles
@@ -43,10 +38,10 @@
 
 ### What waveform_js Does NOT Handle
 
-- ❌ UI/editor (→ undertow_repl_js)
-- ❌ Server communication (→ undertow_repl_js)
-- ❌ Pattern parsing (→ UndertowServer/UzuParser)
-- ❌ Music theory (→ UndertowServer/harmony)
+- ❌ UI/editor
+- ❌ Server communication
+- ❌ Pattern parsing (use a pattern library)
+- ❌ Music theory (use a music theory library)
 
 ## Project Structure
 
@@ -54,7 +49,7 @@
 waveform_js/
 ├── src/
 │   ├── index.js              # Main exports
-│   ├── waveform.js           # Waveform class
+│   ├── waveform.js           # createWaveform factory
 │   ├── audio-context.js      # AudioContext lifecycle
 │   ├── synths/
 │   │   ├── oscillator.js     # Oscillator synths
@@ -71,7 +66,6 @@ waveform_js/
 │   └── basic.html            # Working demo
 ├── test/                     # Jest unit tests
 ├── docs/
-│   ├── ROADMAP.md            # Development plan
 │   └── sessions/             # AI assistant session logs
 ├── package.json
 ├── rollup.config.js
@@ -81,32 +75,14 @@ waveform_js/
 
 ## Development Roadmap
 
-See `docs/ROADMAP.md` for full details. Current progress:
+All core phases complete. Library is production-ready.
 
 - ✅ **Phase 1: Audio Context Foundation** - COMPLETE
-  - AudioContext management
-  - Basic oscillator synths
-  - ADSR envelope
-  - SuperDirt-compatible play() API
+- ✅ **Phase 2: Sample Playback** - COMPLETE
+- ✅ **Phase 3: Pattern Scheduler** - COMPLETE
+- ✅ **Phase 4: Effects Processing** - COMPLETE
+- ⏳ **Phase 5: WebMIDI Output** - Future
 
-- 🔜 **Phase 2: Sample Playback** - NEXT
-  - Sample loading and management
-  - Sample playback with speed/begin/end
-  - Sample bank support
-
-- ⏳ **Phase 3: Pattern Scheduler**
-  - Lookahead scheduler
-  - Hot-swappable patterns
-  - Cycle-based timing
-
-- ⏳ **Phase 4: Effects Processing**
-  - Reverb, delay, filter
-  - SuperDirt-compatible parameters
-
-- ⏳ **Phase 5: WebMIDI Output**
-  - MIDI note messages
-  - Control changes
-  - Pattern → MIDI routing
 
 ## API Design Principles
 
@@ -123,10 +99,11 @@ wf.play({ s: 'bd', gain: 0.8, pan: -0.5, room: 0.3 });
 Mirror the Elixir waveform API where possible:
 
 ```javascript
-// JavaScript                          // Elixir
-Scheduler.setCps(0.5);              // PatternScheduler.set_cps(0.5)
-Scheduler.schedulePattern(id, e);   // PatternScheduler.schedule_pattern(id, e)
-Scheduler.hush();                   // PatternScheduler.hush()
+// JavaScript                             // Elixir
+const scheduler = createScheduler();
+scheduler.setCps(0.5);                 // PatternScheduler.set_cps(0.5)
+scheduler.schedulePattern(id, e);      // PatternScheduler.schedule_pattern(id, e)
+scheduler.hush();                      // PatternScheduler.hush()
 ```
 
 ### 3. Simple Defaults, Full Control
@@ -185,8 +162,7 @@ npm test -- --coverage  # Coverage report
 1. **Add source code** in appropriate `src/` subdirectory
 2. **Add tests** in `test/` if testable (pure functions)
 3. **Update examples** to demonstrate new feature
-4. **Update ROADMAP.md** to check off completed tasks
-5. **Document in session log** in `docs/sessions/`
+4. **Document in session log** in `docs/sessions/`
 
 ### Code Style
 
@@ -243,13 +219,9 @@ All AI assistant sessions should be documented in `docs/sessions/` with:
 ## Related Projects
 
 - **waveform** - Elixir equivalent (SuperCollider OSC client)
-- **undertow_repl_js** - Browser REPL UI (uses waveform_js)
-- **UndertowServer** - Elixir pattern evaluation server
-- **kino_undertow** - Livebook live coding widget
 
 ## Inspiration
 
-- [waveform](../waveform) - Direct Elixir equivalent
 - [Tone.js](https://tonejs.github.io/) - Web Audio framework
 - [Strudel](https://strudel.cc/) - Browser-based live coding
 - [SuperDirt](https://github.com/musikinformatik/SuperDirt) - Parameter conventions
@@ -274,44 +246,32 @@ Compatibility with existing live coding ecosystem (TidalCycles).
 
 ## Current State
 
-**Phase 1 Complete (2025-11-27)**
+**All Phases Complete (2025-12-06)**
 
 ✅ Working features:
+- Factory function API (`createWaveform`, `createScheduler`, `createSampleManager`)
 - AudioContext initialization and lifecycle
-- Oscillator synths (sine, square, saw, triangle)
-- ADSR envelope
-- Filter support (cutoff, resonance)
-- Stereo panning
-- SuperDirt-compatible play() API
-- 59 passing unit tests
-- Working HTML demo
+- Oscillator synths (sine, square, saw, triangle) + FM synths
+- Sample playback with speed/begin/end parameters
+- Lookahead pattern scheduler with hot-swap
+- Effects chain (reverb, delay, filter, distortion)
+- TypeScript declarations (.d.ts files)
 
-📦 Bundle sizes:
-- Minified: 3.9KB
-- ES Module: 14KB
-- UMD: 16KB
+📦 Exports:
+```javascript
+import {
+  createWaveform,
+  createScheduler,
+  createSampleManager,
+  createReverb, createDelay, createFilter, createEffectsChain,
+  noteToFreq, dbToGain, bpmToCps
+} from 'waveform-js';
+```
 
-## Next Steps
-
-1. **Phase 2: Sample Playback**
-   - Implement sample loading
-   - Add sample bank management
-   - Support speed/begin/end parameters
-
-2. **Pattern Scheduler**
-   - Implement lookahead scheduler
-   - Add pattern management
-   - Support hot-swapping
-
-3. **Effects**
-   - Reverb, delay, filter effects
-   - Effects chain management
-
-See `docs/ROADMAP.md` for detailed implementation plan.
+**API Pattern:** Factory functions (no classes, no `new` keyword)
 
 ## Questions?
 
 - Read `DEVELOPMENT.md` for development workflow
 - Read `TESTING.md` for testing strategy
-- Read `docs/ROADMAP.md` for implementation plan
 - Check `docs/sessions/` for past AI assistant sessions
