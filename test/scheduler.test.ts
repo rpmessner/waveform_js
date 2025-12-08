@@ -110,7 +110,7 @@ describe('Scheduler', () => {
     });
 
     test('schedulePattern with function', () => {
-      const queryFn = (cycle: number) => [{ start: 0, params: { s: 'bd' } }];
+      const queryFn = (_cycle: number) => [{ start: 0, params: { s: 'bd' } }];
       scheduler.schedulePattern('dynamic', queryFn);
       expect(scheduler.hasPattern('dynamic')).toBe(true);
     });
