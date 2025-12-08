@@ -329,5 +329,3 @@ export const createScheduler = ({ audioContext, playFn, config = {} }: Scheduler
     dispose
   };
 };
-
-export default createScheduler;

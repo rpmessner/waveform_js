@@ -230,5 +230,3 @@ export const createWaveform = (options: WaveformOptions = {}): WaveformInstance 
 
   return api;
 };
-
-export default createWaveform;
