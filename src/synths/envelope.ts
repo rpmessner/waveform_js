@@ -10,7 +10,7 @@ import type { EnvelopeParams } from '../types';
  */
 export function applyADSR(
   gainNode: GainNode,
-  audioContext: AudioContext,
+  _audioContext: AudioContext,
   params: EnvelopeParams,
   startTime: number
 ): number {
@@ -45,21 +45,3 @@ export function applyADSR(
   return releaseEnd - now;
 }
 
-/**
- * Apply a simple exponential decay envelope
- * Useful for percussion sounds
- * @returns Duration
- */
-export function applyDecay(
-  gainNode: GainNode,
-  audioContext: AudioContext,
-  decayTime: number = 0.3,
-  startTime: number
-): number {
-  const now = startTime;
-
-  gainNode.gain.setValueAtTime(1, now);
-  gainNode.gain.exponentialRampToValueAtTime(0.001, now + decayTime);
-
-  return decayTime;
-}
