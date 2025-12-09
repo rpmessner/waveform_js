@@ -104,8 +104,15 @@ export interface PatternEvent {
   params?: SoundParams;
   /** Division for multi-cycle patterns */
   division?: number;
-  /** Alternation values per cycle */
-  alternate?: Array<{ sound: string; sample?: number }>;
+  /** Alternation values per cycle (supports both long and short names) */
+  alternate?: Array<{
+    sound?: string;
+    sample?: number;
+    s?: string;
+    n?: number;
+    source_start?: number;
+    source_end?: number;
+  }>;
 }
 
 /** Scheduler configuration */

@@ -185,45 +185,15 @@ export const createScheduler = ({ audioContext, playFn, config = {} }: Scheduler
       events.forEach(event => {
         if (!event || typeof event.start !== 'number') return;
 
-        const params = (event.params || event) as SoundParams & { division?: number; alternate?: Array<{ sound: string; sample?: number }> };
-        const division = params.division || 1;
-        let eventStartPos = event.start;
-
-        if (division > 1) {
-          const scaledStart = event.start * division;
-          const eventCycleOffset = Math.floor(scaledStart);
-          const cycleWithinIteration = cycle % Math.floor(division);
-
-          if (eventCycleOffset !== cycleWithinIteration) return;
-
-          eventStartPos = scaledStart - eventCycleOffset;
-        }
-
-        // Handle alternation
-        const finalParams: SoundParams = { ...params };
-        if (params.alternate && Array.isArray(params.alternate)) {
-          const alternates = params.alternate;
-          const index = cycle % alternates.length;
-          const selected = alternates[index];
-          if (selected && selected.sound) {
-            finalParams.s = selected.sound;
-            if (selected.sample != null) {
-              finalParams.n = selected.sample;
-            }
-          }
-          delete (finalParams as unknown as { alternate?: unknown }).alternate;
-        }
-
-        delete (finalParams as unknown as { division?: unknown }).division;
-
-        const eventStartTime = cycleStartTime + (eventStartPos * cycleDuration);
+        const params = (event.params || event) as SoundParams;
+        const eventStartTime = cycleStartTime + (event.start * cycleDuration);
 
         if (eventStartTime < audioContext.currentTime) return;
 
-        onEventCallbacks.fire({ ...event, params: finalParams }, eventStartTime, cycle);
+        onEventCallbacks.fire(event, eventStartTime, cycle);
 
         try {
-          playFn(finalParams, eventStartTime);
+          playFn(params, eventStartTime);
         } catch (e) {
           console.error('Play function error:', e);
         }

@@ -49,8 +49,12 @@ export const createWaveform = (options: WaveformOptions = {}): WaveformInstance 
     const synthType = params.s || 'sine';
     const variant = params.n ?? null;
 
+    console.log(`[waveform.play] s=${synthType}, n=${variant}, startTime=${startTime}, currentTime=${audioContext.currentTime}`);
+
     // Check if this is a loaded sample
     const sampleBuffer = Samples.get(synthType, variant);
+
+    console.log(`[waveform.play] sampleBuffer=${!!sampleBuffer}`);
 
     if (sampleBuffer) {
       return playSampleWithNote(audioContext, masterGain, sampleBuffer, params, startTime);
