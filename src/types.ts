@@ -94,26 +94,46 @@ export interface SoundParams {
   tone?: number;
 }
 
-/** Pattern event with timing */
-export interface PatternEvent {
-  /** Start position within cycle (0.0-1.0) */
-  start: number;
-  /** Duration within cycle */
-  duration?: number;
-  /** Sound parameters */
-  params?: SoundParams;
-  /** Division for multi-cycle patterns */
-  division?: number;
-  /** Alternation values per cycle (supports both long and short names) */
-  alternate?: Array<{
-    sound?: string;
-    sample?: number;
-    s?: string;
-    n?: number;
-    source_start?: number;
-    source_end?: number;
-  }>;
+/** Time interval with begin/end */
+export interface TimeSpan {
+  begin: number;
+  end: number;
 }
+
+/** Source location for editor highlighting */
+export interface SourceLocation {
+  start: number;
+  end: number;
+}
+
+/** Hap context with metadata */
+export interface HapContext {
+  locations: SourceLocation[];
+  tags: string[];
+}
+
+/** Hap - a happening in a pattern (Strudel-compatible format) */
+export interface Hap {
+  /** True event extent, null for continuous signals */
+  whole: TimeSpan | null;
+  /** Portion intersecting the query window */
+  part: TimeSpan;
+  /** Sound parameters (s, n, note, gain, pan, etc.) */
+  value: SoundParams & Record<string, unknown>;
+  /** Metadata (source locations, tags) */
+  context: HapContext;
+}
+
+/** Query function for dynamic patterns - returns Haps */
+export type HapQueryFn = (cycle: number) => Hap[];
+
+/** Get onset time from a Hap */
+export const getHapOnset = (hap: Hap): number =>
+  hap.whole?.begin ?? hap.part.begin;
+
+/** Get duration from a Hap */
+export const getHapDuration = (hap: Hap): number =>
+  hap.part.end - hap.part.begin;
 
 /** Scheduler configuration */
 export interface SchedulerConfig {
@@ -136,9 +156,6 @@ export interface WaveformOptions {
 
 /** Callback unsubscribe function */
 export type Unsubscribe = () => void;
-
-/** Query function for dynamic patterns */
-export type PatternQueryFn = (cycle: number) => PatternEvent[];
 
 /** Play function signature for scheduler */
 export type PlayFn = (params: SoundParams, startTime: number) => void;
@@ -223,19 +240,19 @@ export interface SchedulerInstance {
   setBpm: (bpm: number) => void;
   getCurrentCycle: () => number;
   getCurrentCycleNumber: () => number;
-  schedulePattern: (id: string, eventsOrQueryFn: PatternEvent[] | PatternQueryFn) => void;
-  updatePattern: (id: string, eventsOrQueryFn: PatternEvent[] | PatternQueryFn) => void;
+  schedulePattern: (id: string, hapsOrQueryFn: Hap[] | HapQueryFn) => void;
+  updatePattern: (id: string, hapsOrQueryFn: Hap[] | HapQueryFn) => void;
   stopPattern: (id: string) => boolean;
   hush: () => void;
   getPatternIds: () => string[];
   hasPattern: (id: string) => boolean;
-  getPattern: (id: string) => { queryFn: PatternQueryFn | null; events: PatternEvent[] | null } | undefined;
-  getPatterns: () => Map<string, { queryFn: PatternQueryFn | null; events: PatternEvent[] | null }>;
+  getPattern: (id: string) => { queryFn: HapQueryFn | null; haps: Hap[] | null } | undefined;
+  getPatterns: () => Map<string, { queryFn: HapQueryFn | null; haps: Hap[] | null }>;
   start: () => void;
   stop: () => void;
   isRunning: () => boolean;
   onCycle: (callback: (cycle: number) => void) => Unsubscribe;
-  onEvent: (callback: (event: PatternEvent, startTime: number, cycle: number) => void) => Unsubscribe;
+  onHap: (callback: (hap: Hap, startTime: number, cycle: number) => void) => Unsubscribe;
   onStart: (callback: () => void) => Unsubscribe;
   onStop: (callback: () => void) => Unsubscribe;
   dispose: () => void;
@@ -261,8 +278,8 @@ export interface WaveformInstance {
   loadSampleBank: (manifestUrl: string, onProgress?: ProgressCallback) => Promise<Record<string, AudioBuffer>>;
   getSamples: () => SampleManager;
   getScheduler: () => SchedulerInstance | null;
-  schedulePattern: (id: string, eventsOrQueryFn: PatternEvent[] | PatternQueryFn) => void;
-  updatePattern: (id: string, eventsOrQueryFn: PatternEvent[] | PatternQueryFn) => void;
+  schedulePattern: (id: string, hapsOrQueryFn: Hap[] | HapQueryFn) => void;
+  updatePattern: (id: string, hapsOrQueryFn: Hap[] | HapQueryFn) => void;
   stopPattern: (id: string) => boolean;
   hush: () => void;
   startScheduler: () => void;
@@ -274,7 +291,7 @@ export interface WaveformInstance {
   getBpm: () => number;
   getCurrentCycle: () => number;
   onCycle: (callback: (cycle: number) => void) => Unsubscribe;
-  onEvent: (callback: (event: PatternEvent, startTime: number, cycle: number) => void) => Unsubscribe;
+  onHap: (callback: (hap: Hap, startTime: number, cycle: number) => void) => Unsubscribe;
 }
 
 /** Audio context state */

@@ -8,12 +8,13 @@ import { bpmToCps, cpsToBpm } from './utils/timing';
 import type {
   SchedulerInstance,
   SchedulerConfig,
-  PatternEvent,
-  PatternQueryFn,
+  Hap,
+  HapQueryFn,
   PlayFn,
   Unsubscribe,
   SoundParams
 } from './types';
+import { getHapOnset } from './types';
 
 /**
  * Default scheduler configuration
@@ -58,8 +59,8 @@ function createCallbackRegistry<T extends (...args: never[]) => void>(): Callbac
 }
 
 interface Pattern {
-  queryFn: PatternQueryFn | null;
-  events: PatternEvent[] | null;
+  queryFn: HapQueryFn | null;
+  haps: Hap[] | null;
 }
 
 interface SchedulerOptions {
@@ -91,7 +92,7 @@ export const createScheduler = ({ audioContext, playFn, config = {} }: Scheduler
 
   // Callback registries
   const onCycleCallbacks = createCallbackRegistry<(cycle: number) => void>();
-  const onEventCallbacks = createCallbackRegistry<(event: PatternEvent, startTime: number, cycle: number) => void>();
+  const onHapCallbacks = createCallbackRegistry<(hap: Hap, startTime: number, cycle: number) => void>();
   const onStartCallbacks = createCallbackRegistry<() => void>();
   const onStopCallbacks = createCallbackRegistry<() => void>();
 
@@ -126,22 +127,22 @@ export const createScheduler = ({ audioContext, playFn, config = {} }: Scheduler
   // Pattern Management
   // ============================================
 
-  const schedulePattern = (id: string, eventsOrQueryFn: PatternEvent[] | PatternQueryFn): void => {
+  const schedulePattern = (id: string, hapsOrQueryFn: Hap[] | HapQueryFn): void => {
     if (!id) {
       throw new Error('Pattern ID is required');
     }
 
-    if (typeof eventsOrQueryFn === 'function') {
-      patterns.set(id, { queryFn: eventsOrQueryFn, events: null });
-    } else if (Array.isArray(eventsOrQueryFn)) {
-      patterns.set(id, { queryFn: null, events: eventsOrQueryFn });
+    if (typeof hapsOrQueryFn === 'function') {
+      patterns.set(id, { queryFn: hapsOrQueryFn, haps: null });
+    } else if (Array.isArray(hapsOrQueryFn)) {
+      patterns.set(id, { queryFn: null, haps: hapsOrQueryFn });
     } else {
-      throw new Error('Pattern must be an array of events or a query function');
+      throw new Error('Pattern must be an array of haps or a query function');
     }
   };
 
-  const updatePattern = (id: string, eventsOrQueryFn: PatternEvent[] | PatternQueryFn): void => {
-    schedulePattern(id, eventsOrQueryFn);
+  const updatePattern = (id: string, hapsOrQueryFn: Hap[] | HapQueryFn): void => {
+    schedulePattern(id, hapsOrQueryFn);
   };
 
   const stopPattern = (id: string): boolean => patterns.delete(id);
@@ -160,40 +161,49 @@ export const createScheduler = ({ audioContext, playFn, config = {} }: Scheduler
   // Internal Scheduling
   // ============================================
 
-  const scheduleEventsForCycle = (cycle: number): void => {
+  const scheduleHapsForCycle = (cycle: number): void => {
     if (startTime === null) return;
 
     const cycleStartTime = startTime + (cycle / cps);
     const cycleDuration = 1 / cps;
 
     patterns.forEach((pattern, patternId) => {
-      let events: PatternEvent[] | null;
+      let haps: Hap[] | null;
 
       if (pattern.queryFn) {
         try {
-          events = pattern.queryFn(cycle);
+          haps = pattern.queryFn(cycle);
         } catch (e) {
           console.error(`Pattern "${patternId}" query function error:`, e);
           return;
         }
       } else {
-        events = pattern.events;
+        haps = pattern.haps;
       }
 
-      if (!Array.isArray(events)) return;
+      if (!Array.isArray(haps)) return;
 
-      events.forEach(event => {
-        if (!event || typeof event.start !== 'number') return;
+      haps.forEach(hap => {
+        if (!hap || !hap.part) return;
 
-        const params = (event.params || event) as SoundParams;
-        const eventStartTime = cycleStartTime + (event.start * cycleDuration);
+        // Get onset time - use whole.begin if available (discrete), else part.begin (continuous)
+        const onset = getHapOnset(hap);
+        // For within-cycle haps, onset is relative (0.0-1.0)
+        // For absolute-timed haps, onset is already absolute
+        const isAbsolute = onset >= cycle && onset < cycle + 1;
+        const relativeOnset = isAbsolute ? onset - cycle : onset;
 
-        if (eventStartTime < audioContext.currentTime) return;
+        const hapStartTime = cycleStartTime + (relativeOnset * cycleDuration);
 
-        onEventCallbacks.fire(event, eventStartTime, cycle);
+        if (hapStartTime < audioContext.currentTime) return;
+
+        onHapCallbacks.fire(hap, hapStartTime, cycle);
+
+        // Sound params are in hap.value
+        const params = hap.value as SoundParams;
 
         try {
-          playFn(params, eventStartTime);
+          playFn(params, hapStartTime);
         } catch (e) {
           console.error('Play function error:', e);
         }
@@ -219,7 +229,7 @@ export const createScheduler = ({ audioContext, playFn, config = {} }: Scheduler
 
     cyclesToSchedule.forEach(cycle => {
       onCycleCallbacks.fire(cycle);
-      scheduleEventsForCycle(cycle);
+      scheduleHapsForCycle(cycle);
       lastScheduledCycle = cycle;
     });
   };
@@ -264,7 +274,7 @@ export const createScheduler = ({ audioContext, playFn, config = {} }: Scheduler
     stop();
     hush();
     onCycleCallbacks.clear();
-    onEventCallbacks.clear();
+    onHapCallbacks.clear();
     onStartCallbacks.clear();
     onStopCallbacks.clear();
   };
@@ -292,7 +302,7 @@ export const createScheduler = ({ audioContext, playFn, config = {} }: Scheduler
     isRunning: getIsRunning,
     // Callbacks
     onCycle: onCycleCallbacks.add,
-    onEvent: onEventCallbacks.add,
+    onHap: onHapCallbacks.add,
     onStart: onStartCallbacks.add,
     onStop: onStopCallbacks.add,
     // Cleanup

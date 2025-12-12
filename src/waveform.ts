@@ -15,8 +15,8 @@ import type {
   PlaybackNodes,
   SchedulerInstance,
   SampleManager,
-  PatternEvent,
-  PatternQueryFn,
+  Hap,
+  HapQueryFn,
   ProgressCallback,
   Unsubscribe
 } from './types';
@@ -136,14 +136,14 @@ export const createWaveform = (options: WaveformOptions = {}): WaveformInstance 
   // Scheduler methods
   const getScheduler = (): SchedulerInstance | null => scheduler;
 
-  const schedulePattern = (id: string, eventsOrQueryFn: PatternEvent[] | PatternQueryFn): void => {
+  const schedulePattern = (id: string, hapsOrQueryFn: Hap[] | HapQueryFn): void => {
     ensureInitialized();
-    scheduler!.schedulePattern(id, eventsOrQueryFn);
+    scheduler!.schedulePattern(id, hapsOrQueryFn);
   };
 
-  const updatePattern = (id: string, eventsOrQueryFn: PatternEvent[] | PatternQueryFn): void => {
+  const updatePattern = (id: string, hapsOrQueryFn: Hap[] | HapQueryFn): void => {
     ensureInitialized();
-    scheduler!.updatePattern(id, eventsOrQueryFn);
+    scheduler!.updatePattern(id, hapsOrQueryFn);
   };
 
   const stopPattern = (id: string): boolean => {
@@ -187,9 +187,9 @@ export const createWaveform = (options: WaveformOptions = {}): WaveformInstance 
     return scheduler!.onCycle(callback);
   };
 
-  const onEvent = (callback: (event: PatternEvent, startTime: number, cycle: number) => void): Unsubscribe => {
+  const onHap = (callback: (hap: Hap, startTime: number, cycle: number) => void): Unsubscribe => {
     ensureInitialized();
-    return scheduler!.onEvent(callback);
+    return scheduler!.onHap(callback);
   };
 
   // Public API
@@ -229,7 +229,7 @@ export const createWaveform = (options: WaveformOptions = {}): WaveformInstance 
     getBpm,
     getCurrentCycle,
     onCycle,
-    onEvent
+    onHap
   };
 
   return api;

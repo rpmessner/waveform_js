@@ -31,7 +31,11 @@ export { FM_PRESETS, playFMSynth, isFMSynth } from './synths/fm-synth';
 // Export types
 export type {
   SoundParams,
-  PatternEvent,
+  TimeSpan,
+  SourceLocation,
+  HapContext,
+  Hap,
+  HapQueryFn,
   SchedulerConfig,
   WaveformOptions,
   WaveformInstance,
@@ -40,10 +44,12 @@ export type {
   PlaybackNodes,
   EffectChain,
   Unsubscribe,
-  PatternQueryFn,
   PlayFn,
   ProgressCallback
 } from './types';
+
+// Export Hap utility functions
+export { getHapOnset, getHapDuration } from './types';
 
 // For UMD builds, export default as createWaveform
 export { createWaveform as default } from './waveform';
